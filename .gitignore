@@ -1,0 +1,11 @@
+build/
+build-wasm/
+bridge/node_modules/
+bridge/temp_source.vi
+bridge/temp_trace.jsonl
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.log
+.DS_Store
