@@ -1,3 +1,0 @@
-These changes are very important.
-1. The program will not only upload files but will also incorporate the ability to write code in the "code" Space. People usually when they are usually using an interpreter, they are most likely to copy and paste their snippet of code to know what is happening. So we will make our interpreter flexible with this function.
-2. The pause, play, forward, backward buttons is always on the top bar which is difficult to access when moving down the page. Either we make the top bar fixed while moving up and down. or we make the buttons visible and usable even when we do not see the top bar (I have a design idea. Once the top bar is out of sight, there can be a new set of buttons )
