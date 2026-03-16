@@ -163,6 +163,30 @@
     <button id="btnPredictSkip" class="predictCard__btn predictCard__btn--ghost">Skip</button>
   </div>
 
+  <div id="howItWorksModal" class="howModal howModal--hidden" aria-hidden="true">
+  <div class="howModal__card">
+    <div class="howModal__header">
+      <h2>How It Works</h2>
+      <button id="btnCloseHowModal" type="button">Close</button>
+    </div>
+
+    <div class="howModal__body">
+      <p>This tool lets you run a small program and watch how it executes step by step.</p>
+
+      <ol>
+        <li>Write or paste code into the Code panel, or upload a source file.</li>
+        <li>Press <strong>Run</strong> to execute the program.</li>
+        <li>The interpreter produces execution events automatically.</li>
+        <li>Use <strong>Prev</strong>, <strong>Play</strong>, <strong>Next</strong>, or the timeline to move through execution.</li>
+        <li>Read the Changes panel to understand what the current step means.</li>
+        <li>Use Variables and Call Stack to see program state change over time.</li>
+      </ol>
+
+      <p>This visualization is designed to help beginners understand how program execution really works.</p>
+    </div>
+  </div>
+</div>
+
   <div id="predictFeedback" class="predictCard__fb"></div>
 </div>
 </body>
