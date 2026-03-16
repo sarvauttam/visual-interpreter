@@ -16,10 +16,6 @@ loadInterpreter();
   const btnHowItWorks = $("btnHowItWorks");
   const helpBubble = document.getElementById("helpBubble");
   const helpBubbleText = document.getElementById("helpBubbleText");
-  const MAX_TRACE_EVENTS = 5000;
-
-  const howItWorksModal = document.getElementById("howItWorksModal");
-  const btnCloseHowModal = document.getElementById("btnCloseHowModal");
 
   const fileSource = $("fileSource");
 
@@ -60,9 +56,6 @@ loadInterpreter();
   stack: "This panel shows the call stack. It helps you see which function is currently active and how the program moves in and out of function calls.",
   how: "Write or upload code, then run it to generate an execution trace automatically. After that, use Prev, Play, Next, and the timeline to explore the program step by step."
   };
-
-  howItWorksModal?.classList.add("howModal--hidden");
-  howItWorksModal?.setAttribute("aria-hidden", "true");
 
   function showHelpBubble(targetKey, anchorEl) {
     if (!helpBubble || !helpBubbleText || !anchorEl) return;
@@ -120,6 +113,22 @@ let currentHelpKey = null;
       showHelpBubble(key, btn);
       currentHelpKey = key;
     });
+  });
+
+    btnHowItWorks?.addEventListener("click", (e) => {
+    e.stopPropagation();
+
+    if (
+      !helpBubble.classList.contains("helpBubble--hidden") &&
+      currentHelpKey === "how"
+    ) {
+      hideHelpBubble();
+      currentHelpKey = null;
+      return;
+    }
+
+    showHelpBubble("how", btnHowItWorks);
+    currentHelpKey = "how";
   });
 
   document.addEventListener("click", (e) => {
@@ -906,18 +915,6 @@ let lastMouseEvent = null;
     updateTimeline();
   });
 
-  btnCloseHowModal?.addEventListener("click", () => {
-  howItWorksModal?.classList.add("howModal--hidden");
-  howItWorksModal?.setAttribute("aria-hidden", "true");
-});
-
-howItWorksModal?.addEventListener("click", (e) => {
-  if (e.target === howItWorksModal) {
-    howItWorksModal.classList.add("howModal--hidden");
-    howItWorksModal.setAttribute("aria-hidden", "true");
-  }
-});
-
   function handleEvent(ev) {
     if (!ev || !ev.type) return;
 
@@ -1136,26 +1133,6 @@ sourceEditor?.addEventListener("input", () => {
       .split(/\r?\n/)
       .filter((line) => line.trim().length > 0)
       .map((line) => JSON.parse(line));
-
-    if (events.length > MAX_TRACE_EVENTS) {
-      if (changesOutput) {
-        changesOutput.textContent =
-          `Trace too large (${events.length} events). Limit is ${MAX_TRACE_EVENTS}.`;
-      }
-
-      setNarration(
-        "This program produced too many execution steps for the browser view. Please try a smaller example.",
-        "⚠️"
-      );
-
-      setTechnicalSummary({
-        type: "Error",
-        message: `Trace too large: ${events.length} events`
-      });
-
-      setInlineStatus("Run blocked — trace too large");
-      return;
-    }
 
     loadTrace(events);
 
