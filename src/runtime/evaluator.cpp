@@ -1,6 +1,9 @@
 #include "runtime/evaluator.h"
 #include <iostream>
 #include <stdexcept>
+#include <cstdio> 
+#include <string>
+#include <vector>
 
 void Evaluator::set_error(RuntimeErrorCode code, const std::string& msg) {
   if (!err_) err_ = RuntimeError{code, msg};
@@ -19,6 +22,8 @@ bool Evaluator::declare_var(const std::string& name, const Value& v) {
   if (frame_) {
     if (!frame_->declare(name, v, e)) { set_error(e.code, e.message); return false; }
     if (trace_ && trace_->enabled()) {
+      // DEBUG: Print to stderr which will appear in browser console
+      fprintf(stderr, "[DEBUG] Declaring var: %s = %s at line %d\n", name.c_str(), v.to_string().c_str(), current_loc_.line);
       auto ev = trace_->begin("VarDeclare", current_loc_, current_frame_);
       ev.field_string("name", name);
       ev.field_string("value", v.to_string());
@@ -28,6 +33,8 @@ bool Evaluator::declare_var(const std::string& name, const Value& v) {
   }
   if (!global_.declare(name, v, e)) { set_error(e.code, e.message); return false; }
   if (trace_ && trace_->enabled()) {
+    // DEBUG: Print to stderr which will appear in browser console
+    fprintf(stderr, "[DEBUG] Declaring global var: %s = %s at line %d\n", name.c_str(), v.to_string().c_str(), current_loc_.line);
     auto ev = trace_->begin("VarDeclare", current_loc_, current_frame_);
     ev.field_string("name", name);
     ev.field_string("value", v.to_string());
@@ -39,49 +46,33 @@ bool Evaluator::declare_var(const std::string& name, const Value& v) {
 bool Evaluator::assign_var(const std::string& name, const Value& v) {
   RuntimeError e{};
   Value oldv;
-    bool had_old = false;
-
-    // Read old value (frame wins, else global)
-    if (frame_ && frame_->contains_local(name)) {
-      RuntimeError e2{};
-      if (!frame_->get_local(name, oldv, e2)) { set_error(e2.code, e2.message); return false; }
-      had_old = true;
-    } else if (global_.contains_local(name)) {
-      RuntimeError e2{};
-      if (!global_.get_local(name, oldv, e2)) { set_error(e2.code, e2.message); return false; }
-      had_old = true;
-    }
-
+  bool had_old = false;
+  // Read old value (frame wins, else global)
+  if (frame_ && frame_->contains_local(name)) {
+    RuntimeError e2{};
+    if (!frame_->get_local(name, oldv, e2)) { set_error(e2.code, e2.message); return false; }
+    had_old = true;
+  } else if (global_.contains_local(name)) {
+    RuntimeError e2{};
+    if (!global_.get_local(name, oldv, e2)) { set_error(e2.code, e2.message); return false; }
+    had_old = true;
+  }
   
-  // // If name exists in frame, assign there
-  // if (frame_ && frame_->contains_local(name)) {
-  //   if (!frame_->assign_local(name, v, e)) { set_error(e.code, e.message); return false; }
-  //     if (trace_ && trace_->enabled() && had_old) {
-  //     auto ev = trace_->begin("VarWrite", current_loc_, current_frame_);
-  //     ev.field_string("name", name);
-  //     ev.field_string("old", oldv.to_string());
-  //     ev.field_string("new", v.to_string());
-  //     ev.end();
-  //   }
-  //   return true;
-  // }
-
-  // Otherwise assign in global if exists
+  // Assign in global if exists
   if (global_.contains_local(name)) {
     if (!global_.assign_local(name, v, e)) { set_error(e.code, e.message); return false; }
     if (trace_ && trace_->enabled()) {
-     //TRACE: VarWrite with old/new (T02)
-      if (trace_ && trace_->enabled()) {
-        auto ev = trace_->begin("VarWrite", current_loc_, current_frame_);
-        ev.field_string("name", name);
-        ev.field_string("old", oldv.to_string());
-        ev.field_string("new", v.to_string());
-        ev.end();
-      }
+      // DEBUG: Print to stderr
+      fprintf(stderr, "[DEBUG] Assigning var: %s = %s (old: %s) at line %d\n", name.c_str(), v.to_string().c_str(), oldv.to_string().c_str(), current_loc_.line);
+      auto ev = trace_->begin("VarWrite", current_loc_, current_frame_);
+      ev.field_string("name", name);
+      ev.field_string("old", oldv.to_string());
+      ev.field_string("new", v.to_string());
+      ev.end();
     }
     return true;
   }
-
+  
   // Missing everywhere => AssignToUndefined
   e = {RuntimeErrorCode::AssignToUndefined, "AssignToUndefined: '" + name + "'"};
   set_error(e.code, e.message);
@@ -118,6 +109,8 @@ bool Evaluator::get_var(const std::string& name, Value& out) {
 }
 
 bool Evaluator::exec_program(const Program& program) {
+  fprintf(stderr, "[DEBUG] exec_program START, trace_ = %p\n", (void*)trace_);
+
   err_.reset();
   emit_simple("ProgramStart", Loc{1,1});
 
@@ -136,9 +129,13 @@ bool Evaluator::exec_program(const Program& program) {
   }
 
   // Second pass: execute non-function statements
-  for (const auto& st : program.statements) {
-    if (dynamic_cast<const FuncDecl*>(st.get())) continue;
-
+for (const auto& st : program.statements) {
+    if (dynamic_cast<const FuncDecl*>(st.get())) {
+        fprintf(stderr, "[DEBUG] Skipping FuncDecl\n");
+        continue;
+    }
+    
+    fprintf(stderr, "[DEBUG] About to execute statement at line %d\n", st->loc.line);
     emit_simple("StepStart", st->loc);
     bool ok = exec_stmt(st.get());
     emit_simple("StepEnd", st->loc);
@@ -153,21 +150,42 @@ bool Evaluator::exec_program(const Program& program) {
   emit_simple("ProgramEnd", Loc{1,1});
   return true;
 }
-
 bool Evaluator::exec_stmt(const Stmt* s) {
     current_loc_ = s ? s->loc : Loc{1,1};
-  if (returning_) return true; // stop executing more statements
-  if (auto p = dynamic_cast<const ReturnStmt*>(s)) return exec_return(p);
-  if (auto p = dynamic_cast<const LetStmt*>(s)) return exec_let(p);
-  if (auto p = dynamic_cast<const AssignStmt*>(s)) return exec_assign(p);
-  if (auto p = dynamic_cast<const ExprStmt*>(s)) return exec_exprstmt(p);
-  if (auto p = dynamic_cast<const PrintStmt*>(s)) return exec_print(p);
-  if (auto p = dynamic_cast<const IfStmt*>(s)) return exec_if(p);
-  if (auto p = dynamic_cast<const WhileStmt*>(s)) return exec_while(p);
+    fprintf(stderr, "[DEBUG] exec_stmt: statement type = ");
+    
+    if (auto p = dynamic_cast<const ReturnStmt*>(s)) {
+        fprintf(stderr, "ReturnStmt\n");
+        return exec_return(p);
+    }
+    if (auto p = dynamic_cast<const LetStmt*>(s)) {
+        fprintf(stderr, "LetStmt\n");
+        return exec_let(p);
+    }
+    if (auto p = dynamic_cast<const AssignStmt*>(s)) {
+        fprintf(stderr, "AssignStmt\n");
+        return exec_assign(p);
+    }
+    if (auto p = dynamic_cast<const ExprStmt*>(s)) {
+        fprintf(stderr, "ExprStmt\n");
+        return exec_exprstmt(p);
+    }
+    if (auto p = dynamic_cast<const PrintStmt*>(s)) {
+        fprintf(stderr, "PrintStmt\n");
+        return exec_print(p);
+    }
+    if (auto p = dynamic_cast<const IfStmt*>(s)) {
+        fprintf(stderr, "IfStmt\n");
+        return exec_if(p);
+    }
+    if (auto p = dynamic_cast<const WhileStmt*>(s)) {
+        fprintf(stderr, "WhileStmt\n");
+        return exec_while(p);
+    }
 
-  // Not implemented yet (if/while/func/return/input)
-  set_error(RuntimeErrorCode::UndefinedVariable, "Runtime: statement kind not implemented yet");
-  return false;
+    fprintf(stderr, "UNKNOWN\n");
+    set_error(RuntimeErrorCode::UndefinedVariable, "Runtime: statement kind not implemented yet");
+    return false;
 }
 
 bool Evaluator::exec_func_decl(const FuncDecl* f) {
@@ -251,6 +269,8 @@ bool Evaluator::exec_while(const WhileStmt* s) {
 
 
 bool Evaluator::exec_let(const LetStmt* s) {
+  fprintf(stderr, "[DEBUG] exec_let START for: %s\n", s->name.c_str());
+
   Value v;
   if (!eval_expr(s->initializer.get(), v)) return false;
   return declare_var(s->name, v);

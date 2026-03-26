@@ -50,21 +50,27 @@ void Parser::set_error(const std::string& msg, Loc loc) {
 }
 
 Program Parser::parse_program() {
+  fprintf(stderr, "[DEBUG PARSER] parse_program called, token count: %zu\n", toks_.size());
+  
   Program p;
-
   while (!at_end() && !error_) {
+    fprintf(stderr, "[DEBUG PARSER] Parsing statement at position %zu, token: %d\n", pos_, (int)peek().kind);
+    
     if (match(TokenKind::KwFunc)) {
       auto fn = parse_func_decl();
       if (!fn) break;
       p.statements.push_back(std::move(fn));
       continue;
     }
-
     auto s = parse_stmt();
-    if (!s) break;
+    if (!s) {
+      fprintf(stderr, "[DEBUG PARSER] parse_stmt returned nullptr\n");
+      break;
+    }
     p.statements.push_back(std::move(s));
+    fprintf(stderr, "[DEBUG PARSER] Added statement, total: %zu\n", p.statements.size());
   }
-
+  fprintf(stderr, "[DEBUG PARSER] parse_program done, statements: %zu\n", p.statements.size());
   return p;
 }
 
@@ -263,18 +269,47 @@ std::unique_ptr<Stmt> Parser::parse_statement_for_test() {
    ========================= */
 
 std::unique_ptr<Stmt> Parser::parse_stmt() {
-  // Disallow nested functions: only top-level allowed
+  fprintf(stderr, "[DEBUG PARSER] parse_stmt called, current token: %d, kind name: ", (int)peek().kind);
+
+    switch(peek().kind) {
+    case TokenKind::KwLet: fprintf(stderr, "KwLet\n"); break;
+    case TokenKind::Identifier: fprintf(stderr, "Identifier\n"); break;
+    case TokenKind::IntLiteral: fprintf(stderr, "IntLiteral\n"); break;
+    case TokenKind::Semicolon: fprintf(stderr, "Semicolon\n"); break;
+    case TokenKind::Assign: fprintf(stderr, "Assign\n"); break;
+    default: fprintf(stderr, "Other (%d)\n", (int)peek().kind); break;
+  
+  }
+
   if (check(TokenKind::KwFunc)) {
     set_error("Functions are only allowed at top-level", peek().loc);
     return nullptr;
   }
 
-  if (match(TokenKind::KwLet)) return parse_let_stmt();
-  if (match(TokenKind::KwPrint)) return parse_print_stmt();
-  if (match(TokenKind::KwInput)) return parse_input_stmt();
-  if (match(TokenKind::KwIf)) return parse_if_stmt();
-  if (match(TokenKind::KwWhile)) return parse_while_stmt();
-  if (match(TokenKind::KwReturn)) return parse_return_stmt();
+  if (match(TokenKind::KwLet)) {
+     fprintf(stderr, "[DEBUG PARSER] Matched KwLet, calling parse_let_stmt\n");
+     return parse_let_stmt();
+  }
+  if (match(TokenKind::KwPrint)) {
+    fprintf(stderr, "[DEBUG PARSER] Matched KwPrint, calling parse_print_stmt\n");
+    return parse_print_stmt();
+  }
+  if (match(TokenKind::KwInput)) {
+    fprintf(stderr, "[DEBUG PARSER] Matched KwInput, calling parse_input_stmt\n");
+    return parse_input_stmt();
+  }
+  if (match(TokenKind::KwIf)) {
+    fprintf(stderr, "[DEBUG PARSER] Matched KwIf, calling parse_if_stmt\n");
+    return parse_if_stmt();
+  }
+  if (match(TokenKind::KwWhile)) {
+    fprintf(stderr, "[DEBUG PARSER] Matched KwWhile, calling parse_while_stmt\n");
+    return parse_while_stmt();
+  }
+  if (match(TokenKind::KwReturn)) {
+    fprintf(stderr, "[DEBUG PARSER] Matched KwReturn, calling parse_return_stmt\n");
+    return parse_return_stmt();
+  }         
   return parse_assign_or_expr_stmt();
 }
 
@@ -332,18 +367,35 @@ std::unique_ptr<Stmt> Parser::parse_func_decl() {
 }
 
 std::unique_ptr<Stmt> Parser::parse_let_stmt() {
+  fprintf(stderr, "[DEBUG PARSER] parse_let_stmt called\n");
+  
   Token letTok = prev(); // 'let'
 
-  if (!expect(TokenKind::Identifier, "Expected identifier after 'let'")) return nullptr;
+  if (!expect(TokenKind::Identifier, "Expected identifier after 'let'")) {
+    fprintf(stderr, "[DEBUG PARSER] No identifier found\n");
+    return nullptr;
+  }
   std::string name = prev().lexeme;
+  fprintf(stderr, "[DEBUG PARSER] Variable name: %s\n", name.c_str());
 
-  if (!expect(TokenKind::Assign, "Expected '=' after variable name")) return nullptr;
+  if (!expect(TokenKind::Assign, "Expected '=' after variable name")) {
+    fprintf(stderr, "[DEBUG PARSER] No '=' found\n");
+    return nullptr;
+  }
 
   auto init = parse_expr();
-  if (!init) return nullptr;
+  if (!init) {
+    fprintf(stderr, "[DEBUG PARSER] Failed to parse initializer\n");
+    return nullptr;
+  }
 
-  if (!expect(TokenKind::Semicolon, "Expected ';' after let statement")) return nullptr;
+  if (!expect(TokenKind::Semicolon, "Expected ';' after let statement")) {
+    fprintf(stderr, "[DEBUG PARSER] No semicolon\n");
+    return nullptr;
+  }
 
+  fprintf(stderr, "[DEBUG PARSER] Successfully parsed let statement for: %s\n", name.c_str());
+  
   auto n = std::make_unique<LetStmt>(std::move(name), std::move(init));
   n->loc = letTok.loc;
   return n;

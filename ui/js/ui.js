@@ -2,6 +2,8 @@ let wasmModule = null;
 
 async function loadInterpreter() {
   wasmModule = await VisualInterpreterModule();
+  window.vi = wasmModule;  // Expose globally
+  console.log("Interpreter ready, available as window.vi");
 }
 
 loadInterpreter();
@@ -1084,6 +1086,42 @@ sourceEditor?.addEventListener("input", () => {
   btnClearProgram?.addEventListener("click", () => {
     clearProgramState();
   });
+
+  btnRun?.addEventListener("click", async () => {
+  const src = sourceEditor.value;
+  
+  if (!wasmModule) {
+    console.error("WASM not loaded");
+    return;
+  }
+  
+  // Add timeout protection
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("Execution timeout > 10s")), 10000);
+  });
+  
+  try {
+    console.log("Starting execution...", { srcLength: src.length });
+    
+    const result = await Promise.race([
+      Promise.resolve(wasmModule.run_source_to_trace(src)),
+      timeoutPromise
+    ]);
+    
+    console.log("Execution completed", {
+      ok: result.ok,
+      traceLines: result.trace_jsonl?.split('\n').length,
+      stdoutLength: result.stdout_text?.length,
+      errorPresent: !!result.error_text
+    });
+    
+    // ... rest of your handler
+  } catch (error) {
+    console.error("Execution failed:", error);
+    // Show user-friendly error
+    changesOutput.textContent = `Execution error: ${error.message}`;
+  }
+});
 
   btnRun?.addEventListener("click", async () => {
   if (playTimer !== null) {

@@ -1,6 +1,7 @@
 #include "lexer/lexer.h"
 #include <cctype>
 #include <unordered_map>
+#include <cstdio> 
 
 Lexer::Lexer(std::string source) : src_(std::move(source)) {
   // Strip UTF-8 BOM if present (EF BB BF)
@@ -116,7 +117,13 @@ Token Lexer::lex_identifier_or_keyword() {
   };
 
   auto it = kw.find(text);
-  if (it != kw.end()) return make(it->second, start, start_i, i_);
+  if (it != kw.end()) {
+    // DEBUG: Print when keyword found
+    fprintf(stderr, "LEXER: Found keyword '%s' -> kind %d\n", text.c_str(), (int)it->second);
+    return make(it->second, start, start_i, i_);
+  }
+  // DEBUG: Print when identifier found
+  fprintf(stderr, "LEXER: Found identifier '%s'\n", text.c_str());
   return make(TokenKind::Identifier, start, start_i, i_);
 }
 
