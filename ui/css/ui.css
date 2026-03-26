@@ -784,3 +784,95 @@ body.is-playing .timeline__thumb {
   font-size: 14px;
   line-height: 1.45;
 }
+/* Main container layout - use flexbox */
+.app-container {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Main content area - this will shrink when history opens */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Prevents overflow */
+    transition: margin-right 0.3s ease;
+    overflow: hidden;
+}
+
+/* Variables panel container */
+.variables-panel {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 200px;
+}
+
+/* History drawer - slides in from right */
+.history-drawer {
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 100vh;
+    width: 0;
+    background: #2d2d2d;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+    transition: width 0.3s ease;
+    overflow-x: hidden;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+}
+
+.history-drawer.open {
+    width: 350px; /* Adjust as needed */
+}
+
+/* When history is open, push main content left */
+.history-drawer.open ~ .main-content {
+    margin-right: 350px;
+}
+
+/* Alternative: Use transform for smoother animation */
+.history-drawer {
+    position: fixed;
+    right: -350px;
+    top: 0;
+    height: 100vh;
+    width: 350px;
+    background: #2d2d2d;
+    transition: right 0.3s ease;
+    z-index: 1000;
+}
+
+.history-drawer.open {
+    right: 0;
+}
+
+.main-content {
+    transition: margin-right 0.3s ease;
+}
+
+.history-drawer.open ~ .main-content {
+    margin-right: 350px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .history-drawer {
+        width: 100%;
+        right: -100%;
+    }
+    
+    .history-drawer.open {
+        right: 0;
+    }
+    
+    .history-drawer.open ~ .main-content {
+        margin-right: 0;
+        opacity: 0.7;
+        pointer-events: none;
+    }
+}

@@ -51,6 +51,10 @@ loadInterpreter();
   const changesHistory = $("changesHistory");
   const changesOutput = $("changesOutput");
 
+  document.addEventListener('DOMContentLoaded', function() {
+    initHistoryDrawer();
+});
+
   const HELP_TEXT = {
   code: "This is the code panel. You write or paste your program here, and during playback this panel shows which line is currently being executed.",
   changes: "This panel explains what the current step means. It shows a beginner-friendly narration, a technical summary, recent event history, and any compact printed output.",
@@ -299,25 +303,66 @@ if (logList) {
     const btnHistoryTab = document.getElementById("btnHistoryTab");
     const narrationLog = document.getElementById("narrationLog");
 
-    function openHistoryDrawer() {
-    narrationLog?.classList.remove("drawer--hidden");
-    narrationLog?.setAttribute("aria-hidden", "false");
-    if (btnHistoryTab) btnHistoryTab.textContent = "History >>";
-  }
+function openHistoryDrawer() {
+    const drawer = document.getElementById('historyDrawer');
+    const mainContent = document.querySelector('.main-content');
+    const historyTab = document.getElementById('btnHistoryTab');
+    
+    if (drawer) {
+        drawer.classList.add('open');
+        if (mainContent) {
+            mainContent.style.marginRight = '350px';
+        }
+        if (historyTab) historyTab.textContent = 'History <<';
+    }
+}
 
-  function closeHistoryDrawer() {
-    narrationLog?.classList.add("drawer--hidden");
-    narrationLog?.setAttribute("aria-hidden", "true");
-    if (btnHistoryTab) btnHistoryTab.textContent = "History <<";
-  }
+function closeHistoryDrawer() {
+    const drawer = document.getElementById('historyDrawer');
+    const mainContent = document.querySelector('.main-content');
+    const historyTab = document.getElementById('btnHistoryTab');
+    
+    if (drawer) {
+        drawer.classList.remove('open');
+        if (mainContent) {
+            mainContent.style.marginRight = '0';
+        }
+        if (historyTab) historyTab.textContent = 'History >>';
+    }
+}
 
-  function toggleHistoryDrawer() {
-    if (!narrationLog) return;
-    const isHidden = narrationLog.classList.contains("drawer--hidden");
-    if (isHidden) openHistoryDrawer();
-    else closeHistoryDrawer();
-  }
+function toggleHistoryDrawer() {
+    const drawer = document.getElementById('historyDrawer');
+    const isOpen = drawer && drawer.classList.contains('open');
+    
+    if (isOpen) {
+        closeHistoryDrawer();
+    } else {
+        openHistoryDrawer();
+    }
+}
 
+// Add close button functionality
+function initHistoryDrawer() {
+    const closeBtn = document.getElementById('closeHistoryBtn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeHistoryDrawer);
+    }
+    
+    // Also close when clicking outside (optional)
+    document.addEventListener('click', function(event) {
+        const drawer = document.getElementById('historyDrawer');
+        const historyTab = document.getElementById('btnHistoryTab');
+        
+        if (drawer && drawer.classList.contains('open')) {
+            const isClickInside = drawer.contains(event.target) || 
+                                  historyTab?.contains(event.target);
+            if (!isClickInside) {
+                closeHistoryDrawer();
+            }
+        }
+    });
+}
     btnNarrationLog?.addEventListener("click", toggleHistoryDrawer);
     btnHistoryTab?.addEventListener("click", toggleHistoryDrawer);
 
