@@ -31,7 +31,7 @@ loadInterpreter();
 
   const codePre = $("code");      // <pre id="code">
   const codeText = $("codeText"); // <code id="codeText"> (used as fallback)
-const consoleEl = $("changesOutput");
+  const consoleEl = $("changesOutput");
 
   const toggleAutoScroll = document.getElementById("toggleAutoScroll");
   const autoScrollIndicator = document.getElementById("autoScrollIndicator");
@@ -115,6 +115,22 @@ let currentHelpKey = null;
       showHelpBubble(key, btn);
       currentHelpKey = key;
     });
+  });
+
+    btnHowItWorks?.addEventListener("click", (e) => {
+    e.stopPropagation();
+
+    if (
+      !helpBubble.classList.contains("helpBubble--hidden") &&
+      currentHelpKey === "how"
+    ) {
+      hideHelpBubble();
+      currentHelpKey = null;
+      return;
+    }
+
+    showHelpBubble("how", btnHowItWorks);
+    currentHelpKey = "how";
   });
 
   document.addEventListener("click", (e) => {
@@ -305,18 +321,10 @@ if (logList) {
     btnNarrationLog?.addEventListener("click", toggleHistoryDrawer);
     btnHistoryTab?.addEventListener("click", toggleHistoryDrawer);
 
-  btnHowItWorks?.addEventListener("click", (e) => {
-    e.stopPropagation();
-
-    if (!helpBubble.classList.contains("helpBubble--hidden") && currentHelpKey === "how") {
-      hideHelpBubble();
-      currentHelpKey = null;
-      return;
-    }
-
-    showHelpBubble("how", btnHowItWorks);
-    currentHelpKey = "how";
-  });
+    btnHowItWorks?.addEventListener("click", () => {
+  howItWorksModal?.classList.remove("howModal--hidden");
+  howItWorksModal?.setAttribute("aria-hidden", "false");
+});
 
   function renderCodeHighlight(activeLine) {
     if (!codePre) return;
