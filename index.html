@@ -29,65 +29,6 @@
     <div id="helpBubbleText" class="helpBubble__text"></div>
   </div>
 </header>
-<div class="app-container">
-    <!-- History Drawer - placed before main content -->
-    <div id="historyDrawer" class="history-drawer">
-        <div class="drawer-header">
-            <h3>History Log</h3>
-            <button id="closeHistoryBtn" class="close-btn">×</button>
-        </div>
-        <div id="narrationLogList" class="drawer-content">
-            <!-- Log entries go here -->
-        </div>
-    </div>
-    
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top bar with buttons -->
-        <div class="top-bar">
-            <button id="btnHistoryTab">History &gt;&gt;</button>
-            <!-- other buttons -->
-        </div>
-        
-        <!-- Two-column layout for code and variables -->
-        <div class="content-split">
-            <!-- Left: Code panel -->
-            <div class="code-panel">
-                <pre id="code"><code id="codeText"></code></pre>
-            </div>
-            
-            <!-- Right: Variables and Stack -->
-            <div class="right-panel">
-                <div class="variables-panel">
-                    <h3>Variables</h3>
-                    <div class="vars-frame-filter">
-                        <select id="varsFrameFilter">
-                            <option value="current">Current frame</option>
-                            <option value="all">All frames</option>
-                        </select>
-                    </div>
-                    <table id="varsTable">
-                        <thead>
-                            <tr><th>Name</th><th>Value</th><th>Where</th></tr>
-                        </thead>
-                        <tbody id="varsBody"></tbody>
-                    </table>
-                </div>
-                
-                <div class="stack-panel">
-                    <h3>Call Stack</h3>
-                    <ul id="stackList"></ul>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Bottom: Changes/Console panel -->
-        <div class="changes-panel">
-            <div id="changesNarration" class="narration-bar"></div>
-            <pre id="changesOutput" class="console-output"></pre>
-        </div>
-    </div>
-</div>
 
   <!-- Main panes -->
   <main class="main">
