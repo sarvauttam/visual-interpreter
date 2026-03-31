@@ -114,6 +114,8 @@ async function loadInterpreterModule() {
 function renderCurrentExplanationStep() {
   if (!explanationsPanel) return;
 
+  console.log("Rendering explanation steps:", explanationSteps);
+
   if (!explanationSteps.length) {
     renderEmptyExplanationState();
     return;
@@ -125,7 +127,7 @@ function renderCurrentExplanationStep() {
         .map(
           (step, index) => `
             <div class="explanation-block">
-              <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
+              <p class="explanation-code">Line ${step.lineNumber || index + 1}: ${escapeHtml(step.code || "")}</p>
               <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
               <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
             </div>
@@ -469,10 +471,12 @@ function buildExplanationStepsFromSource(source) {
 }
 
 async function runProgram() {
+  console.log("Run button clicked.");
+
   clearInlineError();
-  stopPlayback();
 
   const source = sourceInput ? sourceInput.value : "";
+  console.log("Source content:", source);
 
   if (!source.trim()) {
     showInlineError("Please write or upload some code first.");
@@ -484,20 +488,21 @@ async function runProgram() {
   }
 
   setOutput("Running...");
-  explanationSteps = [];
-  currentStepIndex = -1;
-  renderEmptyExplanationState();
+
+  const fallbackSteps = buildExplanationStepsFromSource(source);
+  console.log("Fallback explanation steps:", fallbackSteps);
+
+  explanationSteps = fallbackSteps;
+  currentStepIndex = explanationSteps.length ? 0 : -1;
+  renderCurrentExplanationStep();
 
   const result = await tryRunWithWasm(source);
+  console.log("WASM result:", result);
 
   if (!result.ok) {
     const friendlyError = result.error_text || "The program could not run.";
     showInlineError(friendlyError);
     setOutput("Run stopped because of an error.");
-
-    explanationSteps = buildExplanationStepsFromSource(source);
-    currentStepIndex = explanationSteps.length ? 0 : -1;
-    renderCurrentExplanationStep();
 
     saveHistoryItem({
       createdAt: new Date().toISOString(),
@@ -514,11 +519,12 @@ async function runProgram() {
 
   const events = parseTraceJsonl(result.trace_jsonl);
   const traceSteps = buildExplanationStepsFromTrace(events, source);
-  const fallbackSteps = buildExplanationStepsFromSource(source);
 
-  explanationSteps = traceSteps.length ? traceSteps : fallbackSteps;
-  currentStepIndex = explanationSteps.length ? 0 : -1;
-  renderCurrentExplanationStep();
+  if (traceSteps.length) {
+    explanationSteps = traceSteps;
+    currentStepIndex = 0;
+    renderCurrentExplanationStep();
+  }
 
   saveHistoryItem({
     createdAt: new Date().toISOString(),
@@ -629,43 +635,43 @@ async function runProgram() {
     );
   }
 
-  function wireEvents() {
-    fileInput?.addEventListener("change", handleFileUpload);
-    runBtn?.addEventListener("click", runProgram);
-    clearBtn?.addEventListener("click", clearWorkspace);
-    saveBtn?.addEventListener("click", showHistory);
+ function wireEvents() {
+  fileInput?.addEventListener("change", handleFileUpload);
+  runBtn?.addEventListener("click", runProgram);
+  clearBtn?.addEventListener("click", clearWorkspace);
+  saveBtn?.addEventListener("click", showHistory);
 
-    howToUseBtn?.addEventListener("click", showHowToUse);
-    historyBtn?.addEventListener("click", showHistory);
-    accountBtn?.addEventListener("click", showAccountMessage);
+  howToUseBtn?.addEventListener("click", showHowToUse);
+  historyBtn?.addEventListener("click", showHistory);
+  accountBtn?.addEventListener("click", showAccountMessage);
 
-    editorFontSize?.addEventListener("change", () => {
-      editorStyleState.size = Number(editorFontSize.value) || 16;
-      applyEditorStyles();
-    });
+  editorFontSize?.addEventListener("change", () => {
+    editorStyleState.size = Number(editorFontSize.value) || 16;
+    applyEditorStyles();
+  });
 
-    boldTextBtn?.addEventListener("click", () => {
-      editorStyleState.bold = !editorStyleState.bold;
-      applyEditorStyles();
-      setToolbarActiveState(boldTextBtn, editorStyleState.bold);
-    });
+  boldTextBtn?.addEventListener("click", () => {
+    editorStyleState.bold = !editorStyleState.bold;
+    applyEditorStyles();
+    setToolbarActiveState(boldTextBtn, editorStyleState.bold);
+  });
 
-    italicTextBtn?.addEventListener("click", () => {
-      editorStyleState.italic = !editorStyleState.italic;
-      applyEditorStyles();
-      setToolbarActiveState(italicTextBtn, editorStyleState.italic);
-    });
+  italicTextBtn?.addEventListener("click", () => {
+    editorStyleState.italic = !editorStyleState.italic;
+    applyEditorStyles();
+    setToolbarActiveState(italicTextBtn, editorStyleState.italic);
+  });
 
-    underlineTextBtn?.addEventListener("click", () => {
-      editorStyleState.underline = !editorStyleState.underline;
-      applyEditorStyles();
-      setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
-    });
+  underlineTextBtn?.addEventListener("click", () => {
+    editorStyleState.underline = !editorStyleState.underline;
+    applyEditorStyles();
+    setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
+  });
 
-    sourceInput?.addEventListener("input", () => {
-      clearInlineError();
-    });
-  }
+  sourceInput?.addEventListener("input", () => {
+    clearInlineError();
+  });
+}
 
   async function init() {
     renderEmptyExplanationState();
