@@ -111,7 +111,20 @@ async function loadInterpreterModule() {
     button.style.color = isActive ? "var(--primary-dark)" : "var(--text)";
   }
 
-function renderCurrentExplanationStep() {
+  function renderEmptyExplanationState() {
+    if (!explanationsPanel) return;
+
+    explanationsPanel.innerHTML = `
+      <div class="empty-state">
+        <div>
+          <h3>Ready to explain your code</h3>
+          <p>Your code explanations will appear here after you run the program.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCurrentExplanationStep() {
   if (!explanationsPanel) return;
 
   console.log("Rendering explanation steps:", explanationSteps);
@@ -143,20 +156,12 @@ function renderCurrentExplanationStep() {
       window.clearInterval(playTimer);
       playTimer = null;
     }
-
-    if (playPauseBtn) {
-      playPauseBtn.textContent = "Play";
-    }
   }
 
-  function startPlayback() {
+   function startPlayback() {
     if (!explanationSteps.length) return;
 
     stopPlayback();
-
-    if (playPauseBtn) {
-      playPauseBtn.textContent = "Pause";
-    }
 
     playTimer = window.setInterval(() => {
       if (currentStepIndex >= explanationSteps.length - 1) {
@@ -602,8 +607,8 @@ async function runProgram() {
         "1. Write or upload your code in the left panel.",
         "2. Click Run.",
         "3. Read the simple explanation on the right.",
-        "4. Use Prev, Play, and Next to move through the explanation steps.",
-        "5. Check the Output panel below for the program result.",
+        "4. Check the Output panel below for the program result.",
+        "5. Review the full explanation list after each run.",
         "",
         "Best results currently come from the project language and simple C/C++-style beginner code."
       ].join("\n")
