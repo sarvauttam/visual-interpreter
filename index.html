@@ -1,162 +1,121 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VI Trace Visualizer (MVP)</title>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+  <title>ISeeCode</title>
   <link rel="stylesheet" href="ui/css/ui.css" />
 </head>
 <body>
-  <!-- Top controls -->
-  <header class="topbar">
-  <div class="topbar__row">
-    <div class="topbar__left">
-      <h1 class="appTitle">Visual Interpreter</h1>
-      <button id="btnHowItWorks" type="button" class="topbarBtn topbarBtn--ghost">How it Works</button>
-    </div>
-
-    <div class="topbar__center">
-      <button id="btnPrev" type="button" title="Previous event">Prev</button>
-      <button id="btnPlay" type="button" title="Play/Pause">Play</button>
-      <button id="btnNext" type="button" title="Next event">Next</button>
-    </div>
-
-    <div class="topbar__right">
-      <div class="topbar__placeholder"></div>
-    </div>
-  </div>
-    <div id="helpBubble" class="helpBubble helpBubble--hidden" aria-hidden="true">
-    <div id="helpBubbleText" class="helpBubble__text"></div>
-  </div>
-</header>
-
-  <!-- Main panes -->
-  <main class="main">
-    <!-- Code view -->
-    <section class="pane pane--code" aria-label="Code view">
-      <div class="pane__header">
-        <h2><span class="hicon">📄</span> Code <button class="panelHelpBtn" type="button" data-help-target="code">?</button></h2>
-        <div class="pane__meta">
-          <span id="codeLoc">line —, col —</span>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar__left">
+        <div class="brand-mark">IC</div>
+        <div class="brand-text">
+          <h1>ISeeCode</h1>
+          <p>Write code. Run it. Understand it.</p>
         </div>
       </div>
 
-      <div class="codeActions">
-        <button id="btnRun" type="button">Run</button>
-        <button id="btnUploadSource" type="button">Upload File</button>
-        <button id="btnClearProgram" type="button">Clear</button>
+      <nav class="topbar__right">
+        <button id="howToUseBtn" class="nav-btn" type="button">How to Use</button>
+        <label for="fileInput" class="nav-btn nav-btn--accent">Upload File</label>
+        <button id="historyBtn" class="nav-btn nav-btn--muted" type="button">History</button>
+        <button id="accountBtn" class="nav-btn" type="button">Account</button>
+      </nav>
+    </header>
 
-        <input id="fileSource" type="file" hidden />
-        <span id="sourceName" class="hint">No file loaded</span>
+    <main class="main-layout">
+      <section class="panel panel--editor" aria-labelledby="codePanelTitle">
+        <div class="panel__header">
+          <div>
+            <h2 id="codePanelTitle">Code</h2>
+            <p class="panel__subtext">Write or upload your code here.</p>
+          </div>
+
+          <div class="editor-actions">
+            <button id="runBtn" class="action-btn action-btn--primary" type="button">Run</button>
+            <button id="clearBtn" class="action-btn" type="button">Clear</button>
+          </div>
+        </div>
+
+        <div class="editor-toolbar" aria-label="Editor options">
+          <label class="toolbar-group" for="editorFontSize">
+            <span>Text size</span>
+            <select id="editorFontSize">
+              <option value="14">14</option>
+              <option value="16" selected>16</option>
+              <option value="18">18</option>
+              <option value="20">20</option>
+              <option value="22">22</option>
+            </select>
+          </label>
+
+          <button id="boldTextBtn" class="toolbar-btn" type="button">Bold</button>
+          <button id="italicTextBtn" class="toolbar-btn" type="button">Italic</button>
+          <button id="underlineTextBtn" class="toolbar-btn" type="button">Underline</button>
+
+          <div class="status-pill" id="fileStatus">No file loaded</div>
+        </div>
+
+        <div class="editor-wrap">
+          <textarea
+            id="sourceInput"
+            class="code-editor"
+            spellcheck="false"
+            placeholder="Write your code here..."
+            aria-label="Code editor"
+          ></textarea>
+        </div>
+
+        <div id="inlineErrorHost" class="inline-error-host" aria-live="polite"></div>
+      </section>
+
+      <section class="panel panel--explanations" aria-labelledby="explanationsTitle">
+        <div class="panel__header">
+          <div>
+            <h2 id="explanationsTitle">Explanations</h2>
+            <p class="panel__subtext">Friendly step-by-step interpretation appears here.</p>
+          </div>
+
+          <div class="explanation-controls">
+            <button id="prevStepBtn" class="action-btn" type="button">Prev</button>
+            <button id="playPauseBtn" class="action-btn" type="button">Play</button>
+            <button id="nextStepBtn" class="action-btn" type="button">Next</button>
+          </div>
+        </div>
+
+        <div id="explanationsPanel" class="explanations-panel">
+          <div class="empty-state">
+            <h3>Ready to explain your code</h3>
+            <p>
+              Your code explanations will appear here after you run the program.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="panel panel--output" aria-labelledby="outputTitle">
+      <div class="panel__header">
+        <div>
+          <h2 id="outputTitle">Output</h2>
+          <p class="panel__subtext">Program results will appear below.</p>
+        </div>
+
+        <button id="saveBtn" class="action-btn" type="button">Save</button>
       </div>
 
-      <div id="codeInlineStatus" class="hint">Ready</div>
-
-      <textarea
-        id="sourceEditor"
-        class="codeEditor"
-        placeholder="Paste your code here or upload your file"
-        spellcheck="false"
-      ></textarea>
-
-      <pre id="code" class="code" hidden><code id="codeText"></code></pre>
+      <pre id="outputPanel" class="output-panel">Ready.</pre>
     </section>
-
-    <!-- Right column: variables + call stack -->
-    <section class="pane pane--right" aria-label="State panels">
-  <!-- Changes -->
-  <div class="subpane subpane--changes">
-    <div class="pane__header">
-      <h2><span class="hicon">💡</span> Changes <button class="panelHelpBtn" type="button" data-help-target="changes">?</button></h2>
-      <div class="changesControls">
-        <label class="control">
-          <input id="toggleAutoScroll" type="checkbox" checked />
-          Auto-scroll
-          <span id="autoScrollIndicator" class="autoscr-ind autoscr-ind--on">ON</span>
-        </label>
-
-        <label class="control">
-          <input id="togglePredict" type="checkbox" />
-          Prediction mode
-        </label>
-
-        <span id="predictScore" class="control changesScore">Score: 0/0</span>
-        <button id="btnNarrationLog" class="topbarBtn topbarBtn--ghost" type="button" title="Open narration log">Log</button>
-      </div>
-    </div>
-
-    <div class="changesPanel">
-      <div id="changesNarration" class="changesNarration">
-        Paste your code here or upload your file, then run the program.
-      </div>
-
-      <div id="changesSummary" class="changesSummary">—</div>
-
-      <div id="changesHistory" class="changesHistory"></div>
-
-      <div id="changesOutput" class="changesOutput"></div>
-    </div>
   </div>
 
-  <!-- Variables -->
-  <div class="subpane subpane--vars">
-    <div class="pane__header">
-      <h2><span class="hicon">🧮</span> Variables <button class="panelHelpBtn" type="button" data-help-target="variables">?</button></h2>
-      <label class="control">
-        Frame
-        <select id="varsFrameFilter">
-          <option value="current" selected>Current frame</option>
-          <option value="all">All frames</option>
-        </select>
-      </label>
-    </div>
-    <table class="table" aria-label="Variables table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Value</th>
-          <th>Where</th>
-        </tr>
-      </thead>
-      <tbody id="varsBody"></tbody>
-    </table>
-  </div>
+  <input id="fileInput" type="file" hidden />
 
-  <!-- Call stack -->
-  <div class="subpane subpane--stack">
-    <div class="pane__header">
-      <h2><span class="hicon">🧱</span> Call Stack <button class="panelHelpBtn" type="button" data-help-target="stack">?</button></h2>
-      <span id="stackHint" class="hint">Top = current</span>
-    </div>
-    <ol id="stackList" class="stack" aria-label="Call stack list"></ol>
-  </div>
-</section>
-
-  </main>
-
-  <!-- Hidden narration log (drawer/modal) -->
-  <aside id="narrationLog" class="drawer drawer--hidden" aria-label="Event history" aria-hidden="true">
-  <div class="drawer__shell">
-    <button id="btnHistoryTab" class="drawer__tab" type="button" title="Event History">History &gt;&gt;</button>
-
-    <div class="drawer__panel">
-      <div class="drawer__header">
-        <h2>Event History</h2>
-      </div>
-      <div id="narrationLogBody" class="drawer__body">
-        <ul id="narrationLogList" class="nlog"></ul>
-      </div>
-    </div>
-  </div>
-</aside>
-
-  <script src="ui/js/vi_wasm.js"></script>
-  <script src="ui/js/ui.js" defer></script>
-
-  <div id="predictCard" class="predictCard predictCard--hidden" role="dialog" aria-hidden="true">
-  <div class="predictCard__title">Predict what happens next</div>
-  <div id="predictQuestion" class="predictCard__q">—</div>
-  <div id="predictFeedback" class="predictCard__fb"></div>
-</div>
+  <script src="vi_wasm.js"></script>
+  <script src="ui/js/ui.js"></script>
 </body>
 </html>
