@@ -111,19 +111,6 @@ async function loadInterpreterModule() {
     button.style.color = isActive ? "var(--primary-dark)" : "var(--text)";
   }
 
-  function renderEmptyExplanationState() {
-    if (!explanationsPanel) return;
-
-    explanationsPanel.innerHTML = `
-      <div class="empty-state">
-        <div>
-          <h3>Ready to explain your code</h3>
-          <p>Your code explanations will appear here after you run the program.</p>
-        </div>
-      </div>
-    `;
-  }
-
 function renderCurrentExplanationStep() {
   if (!explanationsPanel) return;
 
@@ -132,17 +119,21 @@ function renderCurrentExplanationStep() {
     return;
   }
 
-  explanationsPanel.innerHTML = explanationSteps
-    .map(
-      (step, index) => `
-        <div class="explanation-block">
-          <p class="explanation-code">${escapeHtml(step.code || "")}</p>
-          <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
-          <p class="explanation-text" style="margin-top:10px; font-size:0.92rem; color:#5b6a5b;">Step ${index + 1} of ${explanationSteps.length}</p>
-        </div>
-      `
-    )
-    .join("");
+  explanationsPanel.innerHTML = `
+    <div class="explanation-list">
+      ${explanationSteps
+        .map(
+          (step, index) => `
+            <div class="explanation-block">
+              <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
+              <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
+              <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
   function stopPlayback() {
@@ -287,21 +278,23 @@ function renderCurrentExplanationStep() {
     return "This line is part of the program logic and helps the program move forward step by step.";
   }
 
-  function buildExplanationStepsFromSource(source) {
-    const lines = source.replace(/\r\n/g, "\n").split("\n");
-    const steps = [];
+function buildExplanationStepsFromSource(source) {
+  const lines = source.replace(/\r\n/g, "\n").split("\n");
+  const steps = [];
 
-    for (const line of lines) {
-      if (!line.trim()) continue;
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.trim()) continue;
 
-      steps.push({
-        code: line,
-        explanation: buildFriendlyExplanation(line),
-      });
-    }
-
-    return steps;
+    steps.push({
+      lineNumber: i + 1,
+      code: line,
+      explanation: buildFriendlyExplanation(line),
+    });
   }
+
+  return steps;
+}
 
   function parseTraceJsonl(traceJsonl) {
     if (!traceJsonl || !traceJsonl.trim()) return [];
@@ -325,76 +318,76 @@ function renderCurrentExplanationStep() {
   }
 
   function buildExplanationStepsFromTrace(events, source) {
-    const sourceLines = source.replace(/\r\n/g, "\n").split("\n");
-    const steps = [];
+  const sourceLines = source.replace(/\r\n/g, "\n").split("\n");
+  const steps = [];
 
-    for (const event of events) {
-      const lineNumber = event?.loc?.line;
-      if (!lineNumber || lineNumber < 1 || lineNumber > sourceLines.length) continue;
+  for (const event of events) {
+    const lineNumber = event?.loc?.line;
+    if (!lineNumber || lineNumber < 1 || lineNumber > sourceLines.length) continue;
 
-      const code = sourceLines[lineNumber - 1] || "";
-      if (!code.trim()) continue;
+    const code = sourceLines[lineNumber - 1] || "";
+    if (!code.trim()) continue;
 
-      let explanation = "";
+    let explanation = "";
 
-      switch (event.type) {
-        case "ProgramStart":
-          explanation = "The program is starting now.";
-          break;
-        case "ProgramEnd":
-          explanation = "The program has finished running.";
-          break;
-        case "VarDeclare":
-          explanation = `A new variable named ${event.name ?? "unknown"} is created here.`;
-          break;
-        case "VarWrite":
-          explanation = `A variable is updated here with a new value${event.value !== undefined ? `: ${event.value}` : ""}.`;
-          break;
-        case "VarRead":
-          explanation = `The program reads a variable value here so it can keep working.`;
-          break;
-        case "BranchDecision":
-          explanation = `The program checks a condition here and decides which path to follow.`;
-          break;
-        case "LoopCheck":
-          explanation = `The loop condition is checked here to decide whether to continue.`;
-          break;
-        case "CallStart":
-        case "CallEnter":
-          explanation = `A function call begins here.`;
-          break;
-        case "Return":
-          explanation = `The function finishes here and returns control.`;
-          break;
-        case "Print":
-          explanation = `This step sends something to the output area.`;
-          break;
-        case "Error":
-          explanation = `Something went wrong here, so the program stops and reports the problem.`;
-          break;
-        default:
-          explanation = buildFriendlyExplanation(code);
-          break;
-      }
-
-      steps.push({
-        code,
-        explanation,
-      });
+    switch (event.type) {
+      case "ProgramStart":
+        explanation = "The program is starting now.";
+        break;
+      case "ProgramEnd":
+        explanation = "The program has finished running.";
+        break;
+      case "VarDeclare":
+        explanation = `A new variable named ${event.name ?? "unknown"} is created here.`;
+        break;
+      case "VarWrite":
+        explanation = `A variable is updated here with a new value${event.value !== undefined ? `: ${event.value}` : ""}.`;
+        break;
+      case "VarRead":
+        explanation = "The program reads a variable value here so it can keep working.";
+        break;
+      case "BranchDecision":
+        explanation = "The program checks a condition here and decides which path to follow.";
+        break;
+      case "LoopCheck":
+        explanation = "The loop condition is checked here to decide whether to continue.";
+        break;
+      case "CallStart":
+      case "CallEnter":
+        explanation = "A function call begins here.";
+        break;
+      case "Return":
+        explanation = "The function finishes here and returns control.";
+        break;
+      case "Print":
+        explanation = "This step sends something to the output area.";
+        break;
+      case "Error":
+        explanation = "Something went wrong here, so the program stops and reports the problem.";
+        break;
+      default:
+        explanation = buildFriendlyExplanation(code);
+        break;
     }
 
-    const uniqueSteps = [];
-    const seen = new Set();
-
-    for (const step of steps) {
-      const key = `${step.code}__${step.explanation}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      uniqueSteps.push(step);
-    }
-
-    return uniqueSteps;
+    steps.push({
+      lineNumber,
+      code,
+      explanation,
+    });
   }
+
+  const uniqueSteps = [];
+  const seenLineNumbers = new Set();
+
+  for (const step of steps) {
+    if (seenLineNumbers.has(step.lineNumber)) continue;
+    seenLineNumbers.add(step.lineNumber);
+    uniqueSteps.push(step);
+  }
+
+  return uniqueSteps.sort((a, b) => a.lineNumber - b.lineNumber);
+}
 
   async function tryRunWithWasm(source) {
   if (!wasmModule) {
@@ -475,66 +468,66 @@ function renderCurrentExplanationStep() {
   }
 }
 
-  async function runProgram() {
-    clearInlineError();
-    stopPlayback();
+async function runProgram() {
+  clearInlineError();
+  stopPlayback();
 
-    const source = sourceInput ? sourceInput.value : "";
+  const source = sourceInput ? sourceInput.value : "";
 
-    if (!source.trim()) {
-      showInlineError("Please write or upload some code first.");
-      setOutput("Ready.");
-      explanationSteps = [];
-      currentStepIndex = -1;
-      renderEmptyExplanationState();
-      return;
-    }
-
-    setOutput("Running...");
+  if (!source.trim()) {
+    showInlineError("Please write or upload some code first.");
+    setOutput("Ready.");
     explanationSteps = [];
     currentStepIndex = -1;
     renderEmptyExplanationState();
+    return;
+  }
 
-    const result = await tryRunWithWasm(source);
+  setOutput("Running...");
+  explanationSteps = [];
+  currentStepIndex = -1;
+  renderEmptyExplanationState();
 
-    if (!result.ok) {
-      const friendlyError = result.error_text || "The program could not run.";
-      showInlineError(friendlyError);
-      setOutput("Run stopped because of an error.");
+  const result = await tryRunWithWasm(source);
 
-      explanationSteps = buildExplanationStepsFromSource(source);
-      currentStepIndex = explanationSteps.length ? 0 : -1;
-      renderCurrentExplanationStep();
+  if (!result.ok) {
+    const friendlyError = result.error_text || "The program could not run.";
+    showInlineError(friendlyError);
+    setOutput("Run stopped because of an error.");
 
-      saveHistoryItem({
-        createdAt: new Date().toISOString(),
-        source,
-        ok: false,
-        output: "",
-        error: friendlyError,
-      });
-
-      return;
-    }
-
-    setOutput(result.stdout_text || "Program finished successfully.");
-
-    const events = parseTraceJsonl(result.trace_jsonl);
-    const traceSteps = buildExplanationStepsFromTrace(events, source);
-    const fallbackSteps = buildExplanationStepsFromSource(source);
-
-    explanationSteps = traceSteps.length ? traceSteps : fallbackSteps;
+    explanationSteps = buildExplanationStepsFromSource(source);
     currentStepIndex = explanationSteps.length ? 0 : -1;
     renderCurrentExplanationStep();
 
     saveHistoryItem({
       createdAt: new Date().toISOString(),
       source,
-      ok: true,
-      output: result.stdout_text || "",
-      error: "",
+      ok: false,
+      output: "",
+      error: friendlyError,
     });
+
+    return;
   }
+
+  setOutput(result.stdout_text || "Program finished successfully.");
+
+  const events = parseTraceJsonl(result.trace_jsonl);
+  const traceSteps = buildExplanationStepsFromTrace(events, source);
+  const fallbackSteps = buildExplanationStepsFromSource(source);
+
+  explanationSteps = traceSteps.length ? traceSteps : fallbackSteps;
+  currentStepIndex = explanationSteps.length ? 0 : -1;
+  renderCurrentExplanationStep();
+
+  saveHistoryItem({
+    createdAt: new Date().toISOString(),
+    source,
+    ok: true,
+    output: result.stdout_text || "",
+    error: "",
+  });
+}
 
   function clearWorkspace() {
     stopPlayback();

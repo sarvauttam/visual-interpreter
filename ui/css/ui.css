@@ -517,3 +517,16 @@ button {
     padding-right: 16px;
   }
 }
+
+.explanation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.explanation-step-label {
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  color: #5b6a5b;
+  line-height: 1.5;
+}
