@@ -324,9 +324,9 @@ function buildExplanationStepsFromSource(source) {
     return events;
   }
 
-  function buildExplanationStepsFromTrace(events, source) {
+function buildExplanationStepsFromTrace(events, source) {
   const sourceLines = source.replace(/\r\n/g, "\n").split("\n");
-  const steps = [];
+  const traceMap = new Map();
 
   for (const event of events) {
     const lineNumber = event?.loc?.line;
@@ -338,12 +338,6 @@ function buildExplanationStepsFromSource(source) {
     let explanation = "";
 
     switch (event.type) {
-      case "ProgramStart":
-        explanation = "The program is starting now.";
-        break;
-      case "ProgramEnd":
-        explanation = "The program has finished running.";
-        break;
       case "VarDeclare":
         explanation = `A new variable named ${event.name ?? "unknown"} is created here.`;
         break;
@@ -373,21 +367,33 @@ function buildExplanationStepsFromSource(source) {
         explanation = "Something went wrong here, so the program stops and reports the problem.";
         break;
       default:
-        explanation = buildFriendlyExplanation(code);
-        break;
+        continue;
     }
 
-    steps.push({
+    traceMap.set(lineNumber, {
       lineNumber,
       code,
       explanation,
     });
   }
 
+function mergeExplanationSteps(sourceSteps, traceMap) {
+  return sourceSteps.map((step) => {
+    const traced = traceMap.get(step.lineNumber);
+    if (!traced) return step;
+
+    return {
+      lineNumber: step.lineNumber,
+      code: step.code,
+      explanation: traced.explanation || step.explanation,
+    };
+  });
+}
+
   const uniqueSteps = [];
   const seenLineNumbers = new Set();
 
-  for (const step of steps) {
+  for (const step of traceMap.values()) {
     if (seenLineNumbers.has(step.lineNumber)) continue;
     seenLineNumbers.add(step.lineNumber);
     uniqueSteps.push(step);
@@ -494,10 +500,8 @@ async function runProgram() {
 
   setOutput("Running...");
 
-  const fallbackSteps = buildExplanationStepsFromSource(source);
-  console.log("Fallback explanation steps:", fallbackSteps);
-
-  explanationSteps = fallbackSteps;
+  const sourceSteps = buildExplanationStepsFromSource(source);
+  explanationSteps = sourceSteps;
   currentStepIndex = explanationSteps.length ? 0 : -1;
   renderCurrentExplanationStep();
 
@@ -523,13 +527,12 @@ async function runProgram() {
   setOutput(result.stdout_text || "Program finished successfully.");
 
   const events = parseTraceJsonl(result.trace_jsonl);
-  const traceSteps = buildExplanationStepsFromTrace(events, source);
+  const traceMap = buildExplanationStepsFromTrace(events, source);
+  const mergedSteps = mergeExplanationSteps(sourceSteps, traceMap);
 
-  if (traceSteps.length) {
-    explanationSteps = traceSteps;
-    currentStepIndex = 0;
-    renderCurrentExplanationStep();
-  }
+  explanationSteps = mergedSteps;
+  currentStepIndex = explanationSteps.length ? 0 : -1;
+  renderCurrentExplanationStep();
 
   saveHistoryItem({
     createdAt: new Date().toISOString(),
