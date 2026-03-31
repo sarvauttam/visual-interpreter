@@ -110,7 +110,13 @@
 
   <input id="fileInput" type="file" hidden />
 
-  <script src="vi_wasm.js"></script>
-  <script src="ui/js/ui.js"></script>
+<script src="./vi_wasm.js"></script>
+<script>
+  console.log("window.VisualInterpreterModule:", window.VisualInterpreterModule);
+  console.log("window.Module:", window.Module);
+  console.log("typeof VisualInterpreterModule:", typeof VisualInterpreterModule);
+  console.log("typeof Module:", typeof Module);
+</script>
+<script src="./ui/js/ui.js"></script>
 </body>
 </html>
