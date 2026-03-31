@@ -1,13 +1,19 @@
 let wasmModule = null;
 
 async function loadInterpreterModule() {
-  if (typeof window.VisualInterpreterModule !== "function") {
-    console.warn("VisualInterpreterModule is not available.");
+  const factory =
+    (typeof VisualInterpreterModule === "function" && VisualInterpreterModule) ||
+    (typeof window !== "undefined" && typeof window.VisualInterpreterModule === "function" && window.VisualInterpreterModule) ||
+    (typeof Module === "function" && Module) ||
+    (typeof window !== "undefined" && typeof window.Module === "function" && window.Module);
+
+  if (!factory) {
+    console.warn("Interpreter factory is not available.");
     return null;
   }
 
   try {
-    wasmModule = await window.VisualInterpreterModule();
+    wasmModule = await factory();
     window.vi = wasmModule;
     console.log("Interpreter ready.");
     return wasmModule;
@@ -25,10 +31,6 @@ async function loadInterpreterModule() {
   const runBtn = $("runBtn");
   const clearBtn = $("clearBtn");
   const saveBtn = $("saveBtn");
-
-  const prevStepBtn = $("prevStepBtn");
-  const playPauseBtn = $("playPauseBtn");
-  const nextStepBtn = $("nextStepBtn");
 
   const howToUseBtn = $("howToUseBtn");
   const historyBtn = $("historyBtn");
@@ -122,27 +124,26 @@ async function loadInterpreterModule() {
     `;
   }
 
-  function renderCurrentExplanationStep() {
-    if (!explanationsPanel) return;
+function renderCurrentExplanationStep() {
+  if (!explanationsPanel) return;
 
-    if (!explanationSteps.length || currentStepIndex < 0 || currentStepIndex >= explanationSteps.length) {
-      renderEmptyExplanationState();
-      return;
-    }
-
-    const step = explanationSteps[currentStepIndex];
-    const total = explanationSteps.length;
-
-    explanationsPanel.innerHTML = `
-      <div class="explanation-block">
-        <p class="explanation-code">${escapeHtml(step.code || "")}</p>
-        <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
-      </div>
-      <div class="explanation-block">
-        <p class="explanation-text">Step ${currentStepIndex + 1} of ${total}</p>
-      </div>
-    `;
+  if (!explanationSteps.length) {
+    renderEmptyExplanationState();
+    return;
   }
+
+  explanationsPanel.innerHTML = explanationSteps
+    .map(
+      (step, index) => `
+        <div class="explanation-block">
+          <p class="explanation-code">${escapeHtml(step.code || "")}</p>
+          <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
+          <p class="explanation-text" style="margin-top:10px; font-size:0.92rem; color:#5b6a5b;">Step ${index + 1} of ${explanationSteps.length}</p>
+        </div>
+      `
+    )
+    .join("");
+}
 
   function stopPlayback() {
     if (playTimer) {
@@ -396,60 +397,38 @@ async function loadInterpreterModule() {
   }
 
   async function tryRunWithWasm(source) {
-    if (!wasmModule) {
-      await loadInterpreterModule();
-    }
+  if (!wasmModule) {
+    await loadInterpreterModule();
+  }
 
-    if (!wasmModule) {
-      return {
-        ok: false,
-        error_text: "The interpreter module is not available yet.",
-        stdout_text: "",
-        trace_jsonl: "",
-      };
-    }
+  if (!wasmModule) {
+    return {
+      ok: false,
+      error_text: "The interpreter module could not be loaded.",
+      stdout_text: "",
+      trace_jsonl: "",
+    };
+  }
 
-    try {
-      if (typeof wasmModule.run_source_to_trace === "function") {
-        const rawResult = wasmModule.run_source_to_trace(source);
-        let parsed = rawResult;
+  try {
+    if (typeof wasmModule.run_source_to_trace === "function") {
+      const rawResult = wasmModule.run_source_to_trace(source);
+      let parsed = rawResult;
 
-        if (typeof rawResult === "string") {
-          try {
-            parsed = JSON.parse(rawResult);
-          } catch (_error) {
-            parsed = {
-              ok: false,
-              error_text: "Interpreter returned a non-JSON string result.",
-              stdout_text: "",
-              trace_jsonl: "",
-            };
-          }
-        }
-
-        if (parsed && typeof parsed === "object") {
-          return {
-            ok: !!parsed.ok,
-            trace_jsonl: parsed.trace_jsonl || "",
-            stdout_text: parsed.stdout_text || "",
-            error_text: parsed.error_text || "",
+      if (typeof rawResult === "string") {
+        try {
+          parsed = JSON.parse(rawResult);
+        } catch (_error) {
+          parsed = {
+            ok: false,
+            error_text: "Interpreter returned a non-JSON string result.",
+            stdout_text: "",
+            trace_jsonl: "",
           };
         }
       }
 
-      if (typeof wasmModule.ccall === "function") {
-        const raw = wasmModule.ccall(
-          "run_source_to_trace",
-          "string",
-          ["string"],
-          [source]
-        );
-
-        let parsed = raw;
-        if (typeof raw === "string") {
-          parsed = JSON.parse(raw);
-        }
-
+      if (parsed && typeof parsed === "object") {
         return {
           ok: !!parsed.ok,
           trace_jsonl: parsed.trace_jsonl || "",
@@ -457,22 +436,44 @@ async function loadInterpreterModule() {
           error_text: parsed.error_text || "",
         };
       }
+    }
+
+    if (typeof wasmModule.ccall === "function") {
+      const raw = wasmModule.ccall(
+        "run_source_to_trace",
+        "string",
+        ["string"],
+        [source]
+      );
+
+      let parsed = raw;
+      if (typeof raw === "string") {
+        parsed = JSON.parse(raw);
+      }
 
       return {
-        ok: false,
-        error_text: "No compatible interpreter entry point was found.",
-        stdout_text: "",
-        trace_jsonl: "",
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        error_text: error?.message || "Unknown interpreter error.",
-        stdout_text: "",
-        trace_jsonl: "",
+        ok: !!parsed.ok,
+        trace_jsonl: parsed.trace_jsonl || "",
+        stdout_text: parsed.stdout_text || "",
+        error_text: parsed.error_text || "",
       };
     }
+
+    return {
+      ok: false,
+      error_text: "No compatible interpreter entry point was found.",
+      stdout_text: "",
+      trace_jsonl: "",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error_text: error?.message || "Unknown interpreter error.",
+      stdout_text: "",
+      trace_jsonl: "",
+    };
   }
+}
 
   async function runProgram() {
     clearInlineError();
@@ -635,57 +636,11 @@ async function loadInterpreterModule() {
     );
   }
 
-  function goToPreviousStep() {
-    stopPlayback();
-
-    if (!explanationSteps.length) return;
-    if (currentStepIndex <= 0) {
-      currentStepIndex = 0;
-    } else {
-      currentStepIndex -= 1;
-    }
-
-    renderCurrentExplanationStep();
-  }
-
-  function goToNextStep() {
-    stopPlayback();
-
-    if (!explanationSteps.length) return;
-    if (currentStepIndex >= explanationSteps.length - 1) {
-      currentStepIndex = explanationSteps.length - 1;
-    } else {
-      currentStepIndex += 1;
-    }
-
-    renderCurrentExplanationStep();
-  }
-
-  function togglePlayPause() {
-    if (!explanationSteps.length) return;
-
-    if (playTimer) {
-      stopPlayback();
-      return;
-    }
-
-    if (currentStepIndex < 0) {
-      currentStepIndex = 0;
-      renderCurrentExplanationStep();
-    }
-
-    startPlayback();
-  }
-
   function wireEvents() {
     fileInput?.addEventListener("change", handleFileUpload);
     runBtn?.addEventListener("click", runProgram);
     clearBtn?.addEventListener("click", clearWorkspace);
     saveBtn?.addEventListener("click", showHistory);
-
-    prevStepBtn?.addEventListener("click", goToPreviousStep);
-    nextStepBtn?.addEventListener("click", goToNextStep);
-    playPauseBtn?.addEventListener("click", togglePlayPause);
 
     howToUseBtn?.addEventListener("click", showHowToUse);
     historyBtn?.addEventListener("click", showHistory);
