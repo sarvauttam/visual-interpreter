@@ -52,6 +52,8 @@ async function loadInterpreterModule() {
   let explanationSteps = [];
   let currentStepIndex = -1;
   let playTimer = null;
+  let liveExplainTimer = null;
+  let hasRunAtLeastOnce = false;
 
   let editorStyleState = {
     bold: false,
@@ -211,6 +213,113 @@ async function loadInterpreterModule() {
     }
   }
 
+    function isCompleteThought(line) {
+    const trimmed = line.trim();
+
+    if (!trimmed) return false;
+
+    if (/^#include\s*<[^>]+>\s*$/.test(trimmed)) return true;
+    if (/^using\s+namespace\s+\w+\s*;\s*$/.test(trimmed)) return true;
+
+    if (trimmed === "{") return true;
+    if (trimmed === "}") return true;
+
+    if (trimmed.endsWith(";")) return true;
+    if (trimmed.endsWith("{")) return true;
+
+    return false;
+  }
+
+  function getLastNonEmptyLineInfo(source) {
+    const lines = source.replace(/\r\n/g, "\n").split("\n");
+
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      if (lines[i].trim()) {
+        return {
+          lineNumber: i + 1,
+          line: lines[i],
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function buildLiveExplanationStepsFromSource(source) {
+    const lines = source.replace(/\r\n/g, "\n").split("\n");
+    const steps = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+      if (!isCompleteThought(line)) continue;
+
+      steps.push({
+        lineNumber: i + 1,
+        code: line,
+        explanation: buildFriendlyExplanation(line),
+        live: true,
+      });
+    }
+
+    return steps;
+  }
+
+  function renderLiveExplanationPreview(source) {
+    if (!explanationsPanel) return;
+
+    const liveSteps = buildLiveExplanationStepsFromSource(source);
+    const lastNonEmpty = getLastNonEmptyLineInfo(source);
+
+    if (!source.trim()) {
+      explanationSteps = [];
+      currentStepIndex = -1;
+      renderEmptyExplanationState();
+      return;
+    }
+
+    if (!liveSteps.length) {
+      explanationsPanel.innerHTML = `
+        <div class="empty-state">
+          <div>
+            <h3>Start typing your code</h3>
+            <p>I will explain each line here as soon as it becomes complete enough to understand.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const waitingNote =
+      lastNonEmpty && !isCompleteThought(lastNonEmpty.line)
+        ? `
+          <div class="explanation-block explanation-block--pending">
+            <p class="explanation-code">Line ${lastNonEmpty.lineNumber}: ${escapeHtml(lastNonEmpty.line)}</p>
+            <p class="explanation-text explanation-text--pending">
+              Keep going — this line looks incomplete, so I am waiting before explaining it.
+            </p>
+          </div>
+        `
+        : "";
+
+    explanationsPanel.innerHTML = `
+      <div class="explanation-list">
+        ${liveSteps
+          .map(
+            (step, index) => `
+              <div class="explanation-block">
+                <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
+                <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
+                <p class="explanation-step-label">Live explanation ${index + 1} of ${liveSteps.length}</p>
+              </div>
+            `
+          )
+          .join("")}
+        ${waitingNote}
+      </div>
+    `;
+  }
+
   function buildFriendlyExplanation(line) {
     const trimmed = line.trim();
 
@@ -219,7 +328,7 @@ async function loadInterpreterModule() {
     }
 
     if (/^#include\s*</.test(trimmed)) {
-      return "This line brings in a library so the program can use ready-made tools from C++.";
+      return "This line adds a library. It gives your program extra tools it can use later.";
     }
 
     if (/^using\s+namespace\s+/.test(trimmed)) {
@@ -227,11 +336,11 @@ async function loadInterpreterModule() {
     }
 
     if (/^int\s+main\s*\(/.test(trimmed)) {
-      return "This is the main starting point of the program. Execution begins here.";
+      return "This is the main part of the program. When the program starts, it begins here.";
     }
 
     if (/^return\b/.test(trimmed)) {
-      return "This line tells the current function to finish and send a value back.";
+      return "This line ends the current function and sends a result back.";
     }
 
     if (/^let\s+/.test(trimmed)) {
@@ -271,7 +380,7 @@ async function loadInterpreterModule() {
     }
 
     if (trimmed === "}") {
-      return "This closing brace ends the current code block.";
+      return "This curly brace closes the block of code above it.";
     }
 
     if (/=/.test(trimmed) && !/==/.test(trimmed)) {
@@ -525,6 +634,7 @@ async function runProgram() {
   }
 
   setOutput(result.stdout_text || "Program finished successfully.");
+  hasRunAtLeastOnce = true;
 
   const events = parseTraceJsonl(result.trace_jsonl);
   const traceMap = buildExplanationStepsFromTrace(events, source);
@@ -543,9 +653,14 @@ async function runProgram() {
   });
 }
 
-  function clearWorkspace() {
+   function clearWorkspace() {
     stopPlayback();
     clearInlineError();
+
+    if (liveExplainTimer) {
+      window.clearTimeout(liveExplainTimer);
+      liveExplainTimer = null;
+    }
 
     if (sourceInput) {
       sourceInput.value = "";
@@ -561,6 +676,7 @@ async function runProgram() {
 
     explanationSteps = [];
     currentStepIndex = -1;
+    hasRunAtLeastOnce = false;
     renderEmptyExplanationState();
     setOutput("Ready.");
   }
@@ -678,6 +794,14 @@ async function runProgram() {
 
   sourceInput?.addEventListener("input", () => {
     clearInlineError();
+
+    if (liveExplainTimer) {
+      window.clearTimeout(liveExplainTimer);
+    }
+
+    liveExplainTimer = window.setTimeout(() => {
+      renderLiveExplanationPreview(sourceInput.value);
+    }, 220);
   });
 }
 

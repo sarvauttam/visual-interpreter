@@ -530,3 +530,13 @@ button {
   color: #5b6a5b;
   line-height: 1.5;
 }
+
+.explanation-block--pending {
+  border-style: dashed;
+  background: #fbfdfb;
+}
+
+.explanation-text--pending {
+  color: #6f7d6f;
+  font-style: italic;
+}
