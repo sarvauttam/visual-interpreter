@@ -44,6 +44,7 @@ async function loadInterpreterModule() {
   const fileStatus = $("fileStatus");
   const explanationsPanel = $("explanationsPanel");
   const outputPanel = $("outputPanel");
+  const activeLinePreview = $("activeLinePreview");
   const inlineErrorHost = $("inlineErrorHost");
 
   const STORAGE_KEY = "isee_code_history";
@@ -82,9 +83,63 @@ async function loadInterpreterModule() {
     `;
   }
 
-  function clearInlineError() {
-    if (!inlineErrorHost) return;
-    inlineErrorHost.innerHTML = "";
+  function getCursorLineInfo() {
+    if (!sourceInput) return null;
+
+    const value = sourceInput.value || "";
+    const cursorIndex = sourceInput.selectionStart || 0;
+    const beforeCursor = value.slice(0, cursorIndex);
+    const lineNumber = beforeCursor.split("\n").length;
+
+    const lines = value.replace(/\r\n/g, "\n").split("\n");
+    const line = lines[lineNumber - 1] || "";
+
+    return {
+      lineNumber,
+      line,
+    };
+  }
+
+  function renderActiveLinePreview() {
+    if (!activeLinePreview || !sourceInput) return;
+
+    const info = getCursorLineInfo();
+
+    if (!info || !sourceInput.value.trim()) {
+      activeLinePreview.classList.add("hidden");
+      activeLinePreview.innerHTML = "";
+      return;
+    }
+
+    activeLinePreview.classList.remove("hidden");
+    activeLinePreview.innerHTML = `
+      <div class="active-line-preview__label">Current line</div>
+      <div class="active-line-preview__content">
+        <span class="active-line-preview__number">Line ${info.lineNumber}</span>
+        <span class="active-line-preview__text">${escapeHtml(info.line || "(empty line)")}</span>
+      </div>
+    `;
+  }
+
+  function highlightMatchingExplanationCard() {
+    if (!explanationsPanel || !sourceInput) return;
+
+    const info = getCursorLineInfo();
+    const cards = explanationsPanel.querySelectorAll(".explanation-block[data-line-number]");
+
+    cards.forEach((card) => {
+      card.classList.remove("explanation-block--active");
+    });
+
+    if (!info) return;
+
+    const activeCard = explanationsPanel.querySelector(
+      `.explanation-block[data-line-number="${info.lineNumber}"]`
+    );
+
+    if (activeCard) {
+      activeCard.classList.add("explanation-block--active");
+    }
   }
 
   function setOutput(text) {
@@ -141,7 +196,7 @@ async function loadInterpreterModule() {
       ${explanationSteps
         .map(
           (step, index) => `
-            <div class="explanation-block">
+              <div class="explanation-block" data-line-number="${step.lineNumber || index + 1}">
               <p class="explanation-code">Line ${step.lineNumber || index + 1}: ${escapeHtml(step.code || "")}</p>
               <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
               <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
@@ -681,7 +736,7 @@ async function loadInterpreterModule() {
     const waitingNote =
       lastNonEmpty && !classifyLineState(lastNonEmpty.line).complete
         ? `
-          <div class="explanation-block explanation-block--pending">
+        <div class="explanation-block explanation-block--pending explanation-block--active" data-line-number="${lastNonEmpty.lineNumber}">
             <p class="explanation-code">Line ${lastNonEmpty.lineNumber}: ${escapeHtml(lastNonEmpty.line)}</p>
             <p class="explanation-text explanation-text--pending">
               ${escapeHtml(getLineHint(lastNonEmpty.line) || "Keep going — this line looks incomplete, so I am waiting before explaining it fully.")}
@@ -716,7 +771,7 @@ async function loadInterpreterModule() {
         ${liveSteps
           .map(
             (step, index) => `
-              <div class="explanation-block">
+              <div class="explanation-block" data-line-number="${step.lineNumber}">
                 <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
                 <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
                 <p class="explanation-step-label">Live explanation ${index + 1} of ${liveSteps.length}</p>
@@ -727,7 +782,9 @@ async function loadInterpreterModule() {
         ${waitingNote}
       </div>
     `;
-  }
+
+    renderActiveLinePreview();
+    highlightMatchingExplanationCard();
 
    function buildFriendlyExplanation(line) {
     const trimmed = line.trim();
@@ -1124,6 +1181,12 @@ async function runProgram() {
     explanationSteps = [];
     currentStepIndex = -1;
     hasRunAtLeastOnce = false;
+
+    if (activeLinePreview) {
+      activeLinePreview.classList.add("hidden");
+      activeLinePreview.innerHTML = "";
+    }
+
     renderEmptyExplanationState();
     setOutput("Ready.");
   }
@@ -1242,6 +1305,7 @@ async function runProgram() {
 
   sourceInput?.addEventListener("input", () => {
     clearInlineError();
+    renderActiveLinePreview();
 
     if (liveExplainTimer) {
       window.clearTimeout(liveExplainTimer);
@@ -1252,11 +1316,22 @@ async function runProgram() {
     }, 120);
   });
 
-  
+  sourceInput?.addEventListener("click", () => {
+    renderActiveLinePreview();
+    highlightMatchingExplanationCard();
+  });
+
+  sourceInput?.addEventListener("keyup", () => {
+    renderActiveLinePreview();
+    highlightMatchingExplanationCard();
+  });
+
+
   async function init() {
     renderEmptyExplanationState();
     setOutput("Ready.");
     applyEditorStyles();
+    renderActiveLinePreview();
     setToolbarActiveState(boldTextBtn, false);
     setToolbarActiveState(italicTextBtn, false);
     setToolbarActiveState(underlineTextBtn, false);
@@ -1264,6 +1339,5 @@ async function runProgram() {
     wireEvents();
     await loadInterpreterModule();
   }
-
-  init();
+}
 })();
