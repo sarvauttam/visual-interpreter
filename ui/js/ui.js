@@ -44,7 +44,6 @@ async function loadInterpreterModule() {
   const fileStatus = $("fileStatus");
   const explanationsPanel = $("explanationsPanel");
   const outputPanel = $("outputPanel");
-  const activeLinePreview = $("activeLinePreview");
   const inlineErrorHost = $("inlineErrorHost");
 
   const STORAGE_KEY = "isee_code_history";
@@ -126,27 +125,6 @@ async function loadInterpreterModule() {
     `;
   }
 
-  function highlightMatchingExplanationCard() {
-    if (!explanationsPanel || !sourceInput) return;
-
-    const info = getCursorLineInfo();
-    const cards = explanationsPanel.querySelectorAll(".explanation-block[data-line-number]");
-
-    cards.forEach((card) => {
-      card.classList.remove("explanation-block--active");
-    });
-
-    if (!info) return;
-
-    const activeCard = explanationsPanel.querySelector(
-      `.explanation-block[data-line-number="${info.lineNumber}"]`
-    );
-
-    if (activeCard) {
-      activeCard.classList.add("explanation-block--active");
-    }
-  }
-
   function setOutput(text) {
     if (!outputPanel) return;
     outputPanel.textContent = text || "Ready.";
@@ -212,7 +190,6 @@ async function loadInterpreterModule() {
     </div>
   `;
 
-  highlightMatchingExplanationCard();
 
   function stopPlayback() {
     if (playTimer) {
@@ -742,7 +719,7 @@ async function loadInterpreterModule() {
     const waitingNote =
       lastNonEmpty && !classifyLineState(lastNonEmpty.line).complete
         ? `
-          <div class="explanation-block explanation-block--pending explanation-block--active" data-line-number="${lastNonEmpty.lineNumber}">
+          <div class="explanation-block explanation-block--pending">
             <p class="explanation-code">Line ${lastNonEmpty.lineNumber}: ${escapeHtml(lastNonEmpty.line)}</p>
             <p class="explanation-text explanation-text--pending">
               ${escapeHtml(getLineHint(lastNonEmpty.line) || "Keep going — this line looks incomplete, so I am waiting before explaining it fully.")}
@@ -788,9 +765,6 @@ async function loadInterpreterModule() {
         ${waitingNote}
       </div>
     `;
-
-    renderActiveLinePreview();
-    highlightMatchingExplanationCard();
 
    function buildFriendlyExplanation(line) {
     const trimmed = line.trim();
@@ -1187,12 +1161,6 @@ async function runProgram() {
     explanationSteps = [];
     currentStepIndex = -1;
     hasRunAtLeastOnce = false;
-
-    if (activeLinePreview) {
-      activeLinePreview.classList.add("hidden");
-      activeLinePreview.innerHTML = "";
-    }
-
     renderEmptyExplanationState();
     setOutput("Ready.");
   }
@@ -1311,7 +1279,6 @@ async function runProgram() {
 
   sourceInput?.addEventListener("input", () => {
     clearInlineError();
-    renderActiveLinePreview();
 
     if (liveExplainTimer) {
       window.clearTimeout(liveExplainTimer);
@@ -1320,16 +1287,6 @@ async function runProgram() {
     liveExplainTimer = window.setTimeout(() => {
       renderLiveExplanationPreview(sourceInput.value);
     }, 120);
-  });
-
-  sourceInput?.addEventListener("click", () => {
-    renderActiveLinePreview();
-    highlightMatchingExplanationCard();
-  });
-
-  sourceInput?.addEventListener("keyup", () => {
-    renderActiveLinePreview();
-    highlightMatchingExplanationCard();
   });
 
   
