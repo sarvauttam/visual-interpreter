@@ -87,44 +87,6 @@ async function loadInterpreterModule() {
     inlineErrorHost.innerHTML = "";
   }
 
-    function getCursorLineInfo() {
-    if (!sourceInput) return null;
-
-    const value = sourceInput.value || "";
-    const cursorIndex = sourceInput.selectionStart || 0;
-    const beforeCursor = value.slice(0, cursorIndex);
-    const lineNumber = beforeCursor.split("\n").length;
-
-    const lines = value.replace(/\r\n/g, "\n").split("\n");
-    const line = lines[lineNumber - 1] || "";
-
-    return {
-      lineNumber,
-      line,
-    };
-  }
-
-  function renderActiveLinePreview() {
-    if (!activeLinePreview || !sourceInput) return;
-
-    const info = getCursorLineInfo();
-
-    if (!info || !sourceInput.value.trim()) {
-      activeLinePreview.classList.add("hidden");
-      activeLinePreview.innerHTML = "";
-      return;
-    }
-
-    activeLinePreview.classList.remove("hidden");
-    activeLinePreview.innerHTML = `
-      <div class="active-line-preview__label">Current line</div>
-      <div class="active-line-preview__content">
-        <span class="active-line-preview__number">Line ${info.lineNumber}</span>
-        <span class="active-line-preview__text">${escapeHtml(info.line || "(empty line)")}</span>
-      </div>
-    `;
-  }
-
   function setOutput(text) {
     if (!outputPanel) return;
     outputPanel.textContent = text || "Ready.";
@@ -165,31 +127,29 @@ async function loadInterpreterModule() {
   }
 
   function renderCurrentExplanationStep() {
-  if (!explanationsPanel) return;
+    if (!explanationsPanel) return;
 
-  console.log("Rendering explanation steps:", explanationSteps);
+    if (!explanationSteps.length) {
+      renderEmptyExplanationState();
+      return;
+    }
 
-  if (!explanationSteps.length) {
-    renderEmptyExplanationState();
-    return;
+    explanationsPanel.innerHTML = `
+      <div class="explanation-list">
+        ${explanationSteps
+          .map(
+            (step, index) => `
+              <div class="explanation-block">
+                <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
+                <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
+                <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
+              </div>
+            `
+          )
+          .join("")}
+      </div>
+    `;
   }
-
-  explanationsPanel.innerHTML = `
-    <div class="explanation-list">
-      ${explanationSteps
-        .map(
-          (step, index) => `
-            <div class="explanation-block" data-line-number="${step.lineNumber || index + 1}">
-              <p class="explanation-code">Line ${step.lineNumber || index + 1}: ${escapeHtml(step.code || "")}</p>
-              <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
-              <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
-            </div>
-          `
-        )
-        .join("")}
-    </div>
-  `;
-
 
   function stopPlayback() {
     if (playTimer) {
@@ -198,7 +158,7 @@ async function loadInterpreterModule() {
     }
   }
 
-   function startPlayback() {
+  function startPlayback() {
     if (!explanationSteps.length) return;
 
     stopPlayback();
@@ -667,106 +627,7 @@ async function loadInterpreterModule() {
     }
   }
 
-  function getLastNonEmptyLineInfo(source) {
-    const lines = source.replace(/\r\n/g, "\n").split("\n");
-
-    for (let i = lines.length - 1; i >= 0; i -= 1) {
-      if (lines[i].trim()) {
-        return {
-          lineNumber: i + 1,
-          line: lines[i],
-        };
-      }
-    }
-
-    return null;
-  }
-
-  function buildLiveExplanationStepsFromSource(source) {
-    const lines = source.replace(/\r\n/g, "\n").split("\n");
-    const steps = [];
-
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
-      const state = classifyLineState(line);
-
-      if (!state.explainable || !state.complete) continue;
-
-      steps.push({
-        lineNumber: i + 1,
-        code: line,
-        explanation: buildFriendlyExplanation(line),
-        live: true,
-      });
-    }
-
-    return steps;
-  }
-
-  function renderLiveExplanationPreview(source) {
-    if (!explanationsPanel) return;
-
-    const liveSteps = buildLiveExplanationStepsFromSource(source);
-    const lastNonEmpty = getLastNonEmptyLineInfo(source);
-
-    if (!source.trim()) {
-      explanationSteps = [];
-      currentStepIndex = -1;
-      renderEmptyExplanationState();
-      return;
-    }
-
-    const waitingNote =
-      lastNonEmpty && !classifyLineState(lastNonEmpty.line).complete
-        ? `
-          <div class="explanation-block explanation-block--pending">
-            <p class="explanation-code">Line ${lastNonEmpty.lineNumber}: ${escapeHtml(lastNonEmpty.line)}</p>
-            <p class="explanation-text explanation-text--pending">
-              ${escapeHtml(getLineHint(lastNonEmpty.line) || "Keep going — this line looks incomplete, so I am waiting before explaining it fully.")}
-            </p>
-          </div>
-        `
-        : "";
-
-    if (!liveSteps.length && waitingNote) {
-      explanationsPanel.innerHTML = `
-        <div class="explanation-list">
-          ${waitingNote}
-        </div>
-      `;
-      return;
-    }
-
-    if (!liveSteps.length) {
-      explanationsPanel.innerHTML = `
-        <div class="empty-state">
-          <div>
-            <h3>Start typing your code</h3>
-            <p>I will explain each line here as soon as it becomes complete enough to understand.</p>
-          </div>
-        </div>
-      `;
-      return;
-    }
-
-    explanationsPanel.innerHTML = `
-      <div class="explanation-list">
-        ${liveSteps
-          .map(
-            (step, index) => `
-              <div class="explanation-block" data-line-number="${step.lineNumber}">
-                <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
-                <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
-                <p class="explanation-step-label">Live explanation ${index + 1} of ${liveSteps.length}</p>
-              </div>
-            `
-          )
-          .join("")}
-        ${waitingNote}
-      </div>
-    `;
-
-   function buildFriendlyExplanation(line) {
+  function buildFriendlyExplanation(line) {
     const trimmed = line.trim();
     const state = classifyLineState(line);
 
@@ -878,23 +739,123 @@ async function loadInterpreterModule() {
     }
   }
 
-function buildExplanationStepsFromSource(source) {
-  const lines = source.replace(/\r\n/g, "\n").split("\n");
-  const steps = [];
+  function buildLiveExplanationStepsFromSource(source) {
+    const lines = source.replace(/\r\n/g, "\n").split("\n");
+    const steps = [];
 
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (!line.trim()) continue;
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      const state = classifyLineState(line);
 
-    steps.push({
-      lineNumber: i + 1,
-      code: line,
-      explanation: buildFriendlyExplanation(line),
-    });
+      if (!state.explainable || !state.complete) continue;
+
+      steps.push({
+        lineNumber: i + 1,
+        code: line,
+        explanation: buildFriendlyExplanation(line),
+        live: true,
+      });
+    }
+
+    return steps;
   }
 
-  return steps;
-}
+  function getLastNonEmptyLineInfo(source) {
+    const lines = source.replace(/\r\n/g, "\n").split("\n");
+
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      if (lines[i].trim()) {
+        return {
+          lineNumber: i + 1,
+          line: lines[i],
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function renderLiveExplanationPreview(source) {
+    if (!explanationsPanel) return;
+
+    const liveSteps = buildLiveExplanationStepsFromSource(source);
+    const lastNonEmpty = getLastNonEmptyLineInfo(source);
+
+    if (!source.trim()) {
+      explanationSteps = [];
+      currentStepIndex = -1;
+      renderEmptyExplanationState();
+      return;
+    }
+
+    const waitingNote =
+      lastNonEmpty && !classifyLineState(lastNonEmpty.line).complete
+        ? `
+          <div class="explanation-block explanation-block--pending">
+            <p class="explanation-code">Line ${lastNonEmpty.lineNumber}: ${escapeHtml(lastNonEmpty.line)}</p>
+            <p class="explanation-text explanation-text--pending">
+              ${escapeHtml(getLineHint(lastNonEmpty.line) || "Keep going — this line looks incomplete, so I am waiting before explaining it fully.")}
+            </p>
+          </div>
+        `
+        : "";
+
+    if (!liveSteps.length && waitingNote) {
+      explanationsPanel.innerHTML = `
+        <div class="explanation-list">
+          ${waitingNote}
+        </div>
+      `;
+      return;
+    }
+
+    if (!liveSteps.length) {
+      explanationsPanel.innerHTML = `
+        <div class="empty-state">
+          <div>
+            <h3>Start typing your code</h3>
+            <p>I will explain each line here as soon as it becomes complete enough to understand.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    explanationsPanel.innerHTML = `
+      <div class="explanation-list">
+        ${liveSteps
+          .map(
+            (step, index) => `
+              <div class="explanation-block">
+                <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
+                <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
+                <p class="explanation-step-label">Live explanation ${index + 1} of ${liveSteps.length}</p>
+              </div>
+            `
+          )
+          .join("")}
+        ${waitingNote}
+      </div>
+    `;
+  }
+
+  function buildExplanationStepsFromSource(source) {
+    const lines = source.replace(/\r\n/g, "\n").split("\n");
+    const steps = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+
+      steps.push({
+        lineNumber: i + 1,
+        code: line,
+        explanation: buildFriendlyExplanation(line),
+      });
+    }
+
+    return steps;
+  }
 
   function parseTraceJsonl(traceJsonl) {
     if (!traceJsonl || !traceJsonl.trim()) return [];
@@ -917,117 +878,130 @@ function buildExplanationStepsFromSource(source) {
     return events;
   }
 
-function buildExplanationStepsFromTrace(events, source) {
-  const sourceLines = source.replace(/\r\n/g, "\n").split("\n");
-  const traceMap = new Map();
+  function buildExplanationStepsFromTrace(events, source) {
+    const sourceLines = source.replace(/\r\n/g, "\n").split("\n");
+    const traceMap = new Map();
 
-  for (const event of events) {
-    const lineNumber = event?.loc?.line;
-    if (!lineNumber || lineNumber < 1 || lineNumber > sourceLines.length) continue;
+    for (const event of events) {
+      const lineNumber = event?.loc?.line;
+      if (!lineNumber || lineNumber < 1 || lineNumber > sourceLines.length) continue;
 
-    const code = sourceLines[lineNumber - 1] || "";
-    if (!code.trim()) continue;
+      const code = sourceLines[lineNumber - 1] || "";
+      if (!code.trim()) continue;
 
-    let explanation = "";
+      let explanation = "";
 
-    switch (event.type) {
-      case "VarDeclare":
-        explanation = `A new variable named ${event.name ?? "unknown"} is created here.`;
-        break;
-      case "VarWrite":
-        explanation = `A variable is updated here with a new value${event.value !== undefined ? `: ${event.value}` : ""}.`;
-        break;
-      case "VarRead":
-        explanation = "The program reads a variable value here so it can keep working.";
-        break;
-      case "BranchDecision":
-        explanation = "The program checks a condition here and decides which path to follow.";
-        break;
-      case "LoopCheck":
-        explanation = "The loop condition is checked here to decide whether to continue.";
-        break;
-      case "CallStart":
-      case "CallEnter":
-        explanation = "A function call begins here.";
-        break;
-      case "Return":
-        explanation = "The function finishes here and returns control.";
-        break;
-      case "Print":
-        explanation = "This step sends something to the output area.";
-        break;
-      case "Error":
-        explanation = "Something went wrong here, so the program stops and reports the problem.";
-        break;
-      default:
-        continue;
+      switch (event.type) {
+        case "VarDeclare":
+          explanation = `At this step, the program creates a variable${event.name ? ` named ${event.name}` : ""}.`;
+          break;
+        case "VarWrite":
+          explanation = `At this step, the program updates a variable${event.value !== undefined ? ` with the value ${event.value}` : ""}.`;
+          break;
+        case "VarRead":
+          explanation = "At this step, the program reads a variable so it can use its value.";
+          break;
+        case "BranchDecision":
+          explanation = "At this step, the program checks a condition and chooses which path to follow.";
+          break;
+        case "LoopCheck":
+          explanation = "At this step, the program checks whether the loop should continue.";
+          break;
+        case "CallStart":
+        case "CallEnter":
+          explanation = "At this step, the program enters a function call.";
+          break;
+        case "Return":
+          explanation = "At this step, the function finishes and gives control back.";
+          break;
+        case "Print":
+          explanation = "At this step, the program sends something to the output area.";
+          break;
+        case "Error":
+          explanation = "At this step, the program finds an error and stops.";
+          break;
+        default:
+          continue;
+      }
+
+      traceMap.set(lineNumber, {
+        lineNumber,
+        code,
+        explanation,
+      });
     }
 
-    traceMap.set(lineNumber, {
-      lineNumber,
-      code,
-      explanation,
+    return traceMap;
+  }
+
+  function mergeExplanationSteps(sourceSteps, traceMap) {
+    return sourceSteps.map((step) => {
+      const traced = traceMap.get(step.lineNumber);
+      if (!traced) return step;
+
+      return {
+        lineNumber: step.lineNumber,
+        code: step.code,
+        explanation: traced.explanation || step.explanation,
+      };
     });
   }
 
-function mergeExplanationSteps(sourceSteps, traceMap) {
-  return sourceSteps.map((step) => {
-    const traced = traceMap.get(step.lineNumber);
-    if (!traced) return step;
-
-    return {
-      lineNumber: step.lineNumber,
-      code: step.code,
-      explanation: traced.explanation || step.explanation,
-    };
-  });
-}
-
-  const uniqueSteps = [];
-  const seenLineNumbers = new Set();
-
-  for (const step of traceMap.values()) {
-    if (seenLineNumbers.has(step.lineNumber)) continue;
-    seenLineNumbers.add(step.lineNumber);
-    uniqueSteps.push(step);
-  }
-
-  return uniqueSteps.sort((a, b) => a.lineNumber - b.lineNumber);
-}
-
   async function tryRunWithWasm(source) {
-  if (!wasmModule) {
-    await loadInterpreterModule();
-  }
+    if (!wasmModule) {
+      await loadInterpreterModule();
+    }
 
-  if (!wasmModule) {
-    return {
-      ok: false,
-      error_text: "The interpreter module could not be loaded.",
-      stdout_text: "",
-      trace_jsonl: "",
-    };
-  }
+    if (!wasmModule) {
+      return {
+        ok: false,
+        error_text: "The interpreter module could not be loaded.",
+        stdout_text: "",
+        trace_jsonl: "",
+      };
+    }
 
-  try {
-    if (typeof wasmModule.run_source_to_trace === "function") {
-      const rawResult = wasmModule.run_source_to_trace(source);
-      let parsed = rawResult;
+    try {
+      if (typeof wasmModule.run_source_to_trace === "function") {
+        const rawResult = wasmModule.run_source_to_trace(source);
+        let parsed = rawResult;
 
-      if (typeof rawResult === "string") {
-        try {
-          parsed = JSON.parse(rawResult);
-        } catch (_error) {
-          parsed = {
-            ok: false,
-            error_text: "Interpreter returned a non-JSON string result.",
-            stdout_text: "",
-            trace_jsonl: "",
+        if (typeof rawResult === "string") {
+          try {
+            parsed = JSON.parse(rawResult);
+          } catch (_error) {
+            parsed = {
+              ok: false,
+              error_text: "Interpreter returned a non-JSON string result.",
+              stdout_text: "",
+              trace_jsonl: "",
+            };
+          }
+        }
+
+        if (parsed && typeof parsed === "object") {
+          return {
+            ok: !!parsed.ok,
+            trace_jsonl: parsed.trace_jsonl || "",
+            stdout_text: parsed.stdout_text || "",
+            error_text: parsed.error_text || "",
           };
         }
       }
 
-      if (parsed && typeof parsed === "object") {
+      if (typeof wasmModule.ccall === "function") {
+        const raw = wasmModule.ccall(
+          "run_source_to_trace",
+          "string",
+          ["string"],
+          [source]
+        );
+
+        let parsed = raw;
+        if (typeof raw === "string") {
+          parsed = JSON.parse(raw);
+        }
+
         return {
           ok: !!parsed.ok,
           trace_jsonl: parsed.trace_jsonl || "",
@@ -1035,109 +1009,87 @@ function mergeExplanationSteps(sourceSteps, traceMap) {
           error_text: parsed.error_text || "",
         };
       }
-    }
-
-    if (typeof wasmModule.ccall === "function") {
-      const raw = wasmModule.ccall(
-        "run_source_to_trace",
-        "string",
-        ["string"],
-        [source]
-      );
-
-      let parsed = raw;
-      if (typeof raw === "string") {
-        parsed = JSON.parse(raw);
-      }
 
       return {
-        ok: !!parsed.ok,
-        trace_jsonl: parsed.trace_jsonl || "",
-        stdout_text: parsed.stdout_text || "",
-        error_text: parsed.error_text || "",
+        ok: false,
+        error_text: "No compatible interpreter entry point was found.",
+        stdout_text: "",
+        trace_jsonl: "",
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error_text: error?.message || "Unknown interpreter error.",
+        stdout_text: "",
+        trace_jsonl: "",
       };
     }
-
-    return {
-      ok: false,
-      error_text: "No compatible interpreter entry point was found.",
-      stdout_text: "",
-      trace_jsonl: "",
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      error_text: error?.message || "Unknown interpreter error.",
-      stdout_text: "",
-      trace_jsonl: "",
-    };
-  }
-}
-
-async function runProgram() {
-  console.log("Run button clicked.");
-
-  clearInlineError();
-
-  const source = sourceInput ? sourceInput.value : "";
-  console.log("Source content:", source);
-
-  if (!source.trim()) {
-    showInlineError("Please write or upload some code first.");
-    setOutput("Ready.");
-    explanationSteps = [];
-    currentStepIndex = -1;
-    renderEmptyExplanationState();
-    return;
   }
 
-  setOutput("Running...");
+  async function runProgram() {
+    console.log("Run button clicked.");
 
-  const sourceSteps = buildExplanationStepsFromSource(source);
-  explanationSteps = sourceSteps;
-  currentStepIndex = explanationSteps.length ? 0 : -1;
-  renderCurrentExplanationStep();
+    clearInlineError();
 
-  const result = await tryRunWithWasm(source);
-  console.log("WASM result:", result);
+    const source = sourceInput ? sourceInput.value : "";
+    console.log("Source content:", source);
 
-  if (!result.ok) {
-    const friendlyError = result.error_text || "The program could not run.";
-    showInlineError(friendlyError);
-    setOutput("Run stopped because of an error.");
+    if (!source.trim()) {
+      showInlineError("Please write or upload some code first.");
+      setOutput("Ready.");
+      explanationSteps = [];
+      currentStepIndex = -1;
+      renderEmptyExplanationState();
+      return;
+    }
+
+    setOutput("Running...");
+
+    const sourceSteps = buildExplanationStepsFromSource(source);
+    explanationSteps = sourceSteps;
+    currentStepIndex = explanationSteps.length ? 0 : -1;
+    renderCurrentExplanationStep();
+
+    const result = await tryRunWithWasm(source);
+    console.log("WASM result:", result);
+
+    if (!result.ok) {
+      const friendlyError = result.error_text || "The program could not run.";
+      showInlineError(friendlyError);
+      setOutput("Run stopped because of an error.");
+
+      saveHistoryItem({
+        createdAt: new Date().toISOString(),
+        source,
+        ok: false,
+        output: "",
+        error: friendlyError,
+      });
+
+      return;
+    }
+
+    setOutput(result.stdout_text || "Program finished successfully.");
+    hasRunAtLeastOnce = true;
+
+    const events = parseTraceJsonl(result.trace_jsonl);
+    const traceMap = buildExplanationStepsFromTrace(events, source);
+    const mergedSteps = mergeExplanationSteps(sourceSteps, traceMap);
+
+    explanationSteps = mergedSteps;
+    currentStepIndex = explanationSteps.length ? 0 : -1;
+    renderCurrentExplanationStep();
 
     saveHistoryItem({
       createdAt: new Date().toISOString(),
       source,
-      ok: false,
-      output: "",
-      error: friendlyError,
+      ok: true,
+      output: result.stdout_text || "",
+      error: "",
     });
-
-    return;
   }
 
-  setOutput(result.stdout_text || "Program finished successfully.");
-  hasRunAtLeastOnce = true;
-
-  const events = parseTraceJsonl(result.trace_jsonl);
-  const traceMap = buildExplanationStepsFromTrace(events, source);
-  const mergedSteps = mergeExplanationSteps(sourceSteps, traceMap);
-
-  explanationSteps = mergedSteps;
-  currentStepIndex = explanationSteps.length ? 0 : -1;
-  renderCurrentExplanationStep();
-
-  saveHistoryItem({
-    createdAt: new Date().toISOString(),
-    source,
-    ok: true,
-    output: result.stdout_text || "",
-    error: "",
-  });
-}
-
-   function clearWorkspace() {
+  function clearWorkspace() {
     stopPlayback();
     clearInlineError();
 
@@ -1243,58 +1195,56 @@ async function runProgram() {
     );
   }
 
- function wireEvents() {
-  fileInput?.addEventListener("change", handleFileUpload);
-  runBtn?.addEventListener("click", runProgram);
-  clearBtn?.addEventListener("click", clearWorkspace);
-  saveBtn?.addEventListener("click", showHistory);
+  function wireEvents() {
+    fileInput?.addEventListener("change", handleFileUpload);
+    runBtn?.addEventListener("click", runProgram);
+    clearBtn?.addEventListener("click", clearWorkspace);
+    saveBtn?.addEventListener("click", showHistory);
 
-  howToUseBtn?.addEventListener("click", showHowToUse);
-  historyBtn?.addEventListener("click", showHistory);
-  accountBtn?.addEventListener("click", showAccountMessage);
+    howToUseBtn?.addEventListener("click", showHowToUse);
+    historyBtn?.addEventListener("click", showHistory);
+    accountBtn?.addEventListener("click", showAccountMessage);
 
-  editorFontSize?.addEventListener("change", () => {
-    editorStyleState.size = Number(editorFontSize.value) || 16;
-    applyEditorStyles();
-  });
+    editorFontSize?.addEventListener("change", () => {
+      editorStyleState.size = Number(editorFontSize.value) || 16;
+      applyEditorStyles();
+    });
 
-  boldTextBtn?.addEventListener("click", () => {
-    editorStyleState.bold = !editorStyleState.bold;
-    applyEditorStyles();
-    setToolbarActiveState(boldTextBtn, editorStyleState.bold);
-  });
+    boldTextBtn?.addEventListener("click", () => {
+      editorStyleState.bold = !editorStyleState.bold;
+      applyEditorStyles();
+      setToolbarActiveState(boldTextBtn, editorStyleState.bold);
+    });
 
-  italicTextBtn?.addEventListener("click", () => {
-    editorStyleState.italic = !editorStyleState.italic;
-    applyEditorStyles();
-    setToolbarActiveState(italicTextBtn, editorStyleState.italic);
-  });
+    italicTextBtn?.addEventListener("click", () => {
+      editorStyleState.italic = !editorStyleState.italic;
+      applyEditorStyles();
+      setToolbarActiveState(italicTextBtn, editorStyleState.italic);
+    });
 
-  underlineTextBtn?.addEventListener("click", () => {
-    editorStyleState.underline = !editorStyleState.underline;
-    applyEditorStyles();
-    setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
-  });
-}
+    underlineTextBtn?.addEventListener("click", () => {
+      editorStyleState.underline = !editorStyleState.underline;
+      applyEditorStyles();
+      setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
+    });
 
-  sourceInput?.addEventListener("input", () => {
-    clearInlineError();
+    sourceInput?.addEventListener("input", () => {
+      clearInlineError();
 
-    if (liveExplainTimer) {
-      window.clearTimeout(liveExplainTimer);
-    }
+      if (liveExplainTimer) {
+        window.clearTimeout(liveExplainTimer);
+      }
 
-    liveExplainTimer = window.setTimeout(() => {
-      renderLiveExplanationPreview(sourceInput.value);
-    }, 120);
-  });
+      liveExplainTimer = window.setTimeout(() => {
+        renderLiveExplanationPreview(sourceInput.value);
+      }, 120);
+    });
+  }
 
-  
   async function init() {
     renderEmptyExplanationState();
     setOutput("Ready.");
     applyEditorStyles();
-    renderActiveLinePreview();
     setToolbarActiveState(boldTextBtn, false);
     setToolbarActiveState(italicTextBtn, false);
     setToolbarActiveState(underlineTextBtn, false);
@@ -1302,8 +1252,6 @@ async function runProgram() {
     wireEvents();
     await loadInterpreterModule();
   }
-}
 
-  init();   
-  }
+  init();
 })();
