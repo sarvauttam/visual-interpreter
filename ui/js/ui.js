@@ -933,6 +933,18 @@ function buildExplanationStepsFromTrace(events, source) {
     });
   }
 
+  const uniqueSteps = [];
+  const seenLineNumbers = new Set();
+
+  for (const step of traceMap.values()) {
+    if (seenLineNumbers.has(step.lineNumber)) continue;
+    seenLineNumbers.add(step.lineNumber);
+    uniqueSteps.push(step);
+  }
+
+  return uniqueSteps.sort((a, b) => a.lineNumber - b.lineNumber);
+}
+
 function mergeExplanationSteps(sourceSteps, traceMap) {
   return sourceSteps.map((step) => {
     const traced = traceMap.get(step.lineNumber);
@@ -946,17 +958,6 @@ function mergeExplanationSteps(sourceSteps, traceMap) {
   });
 }
 
-  const uniqueSteps = [];
-  const seenLineNumbers = new Set();
-
-  for (const step of traceMap.values()) {
-    if (seenLineNumbers.has(step.lineNumber)) continue;
-    seenLineNumbers.add(step.lineNumber);
-    uniqueSteps.push(step);
-  }
-
-  return uniqueSteps.sort((a, b) => a.lineNumber - b.lineNumber);
-}
 
   async function tryRunWithWasm(source) {
   if (!wasmModule) {
@@ -1237,10 +1238,8 @@ async function runProgram() {
     editorStyleState.underline = !editorStyleState.underline;
     applyEditorStyles();
     setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
-  });
-}
 
-  sourceInput?.addEventListener("input", () => {
+      sourceInput?.addEventListener("input", () => {
     clearInlineError();
 
     if (liveExplainTimer) {
@@ -1251,8 +1250,9 @@ async function runProgram() {
       renderLiveExplanationPreview(sourceInput.value);
     }, 120);
   });
-
   
+  });
+}  
   async function init() {
     renderEmptyExplanationState();
     setOutput("Ready.");
