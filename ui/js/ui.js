@@ -127,29 +127,31 @@ async function loadInterpreterModule() {
   }
 
   function renderCurrentExplanationStep() {
-    if (!explanationsPanel) return;
+  if (!explanationsPanel) return;
 
-    if (!explanationSteps.length) {
-      renderEmptyExplanationState();
-      return;
-    }
+  console.log("Rendering explanation steps:", explanationSteps);
 
-    explanationsPanel.innerHTML = `
-      <div class="explanation-list">
-        ${explanationSteps
-          .map(
-            (step, index) => `
-              <div class="explanation-block">
-                <p class="explanation-code">Line ${step.lineNumber}: ${escapeHtml(step.code || "")}</p>
-                <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
-                <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
-              </div>
-            `
-          )
-          .join("")}
-      </div>
-    `;
+  if (!explanationSteps.length) {
+    renderEmptyExplanationState();
+    return;
   }
+
+  explanationsPanel.innerHTML = `
+    <div class="explanation-list">
+      ${explanationSteps
+        .map(
+          (step, index) => `
+            <div class="explanation-block">
+              <p class="explanation-code">Line ${step.lineNumber || index + 1}: ${escapeHtml(step.code || "")}</p>
+              <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
+              <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
 
   function stopPlayback() {
     if (playTimer) {
@@ -158,7 +160,7 @@ async function loadInterpreterModule() {
     }
   }
 
-  function startPlayback() {
+   function startPlayback() {
     if (!explanationSteps.length) return;
 
     stopPlayback();
@@ -211,7 +213,7 @@ async function loadInterpreterModule() {
     }
   }
 
-  function isCompleteThought(line) {
+    function isCompleteThought(line) {
     const trimmed = line.trim();
 
     if (!trimmed) return false;
@@ -226,538 +228,6 @@ async function loadInterpreterModule() {
     if (trimmed.endsWith("{")) return true;
 
     return false;
-  }
-
-  function classifyLineState(line) {
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      return {
-        kind: "empty",
-        complete: false,
-        explainable: false,
-      };
-    }
-
-    if (/^#include\s*</.test(trimmed) && !/>$/.test(trimmed)) {
-      return {
-        kind: "incomplete_include",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^#include\s*<[^>]+>\s*$/.test(trimmed)) {
-      return {
-        kind: "include",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^using\s+namespace\b/.test(trimmed) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_namespace",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^using\s+namespace\s+\w+\s*;\s*$/.test(trimmed)) {
-      return {
-        kind: "namespace",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^int\s+main\s*\($/.test(trimmed)) {
-      return {
-        kind: "incomplete_main_signature",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^int\s+main\s*\(\)\s*$/.test(trimmed)) {
-      return {
-        kind: "main_signature_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^int\s+main\s*\(\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "main_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^if\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_if",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^if\s*\([^)]+\)\s*$/.test(trimmed)) {
-      return {
-        kind: "if_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^if\s*\([^)]+\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "if_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^else\s*$/.test(trimmed)) {
-      return {
-        kind: "else_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^else\s*\{$/.test(trimmed)) {
-      return {
-        kind: "else_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^while\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_while",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^while\s*\([^)]+\)\s*$/.test(trimmed)) {
-      return {
-        kind: "while_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^while\s*\([^)]+\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "while_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^for\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_for",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^for\s*\([^)]+\)\s*$/.test(trimmed)) {
-      return {
-        kind: "for_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^for\s*\([^)]+\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "for_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^return\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_return",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^return\b/.test(trimmed) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_return",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^return\b.*;\s*$/.test(trimmed)) {
-      return {
-        kind: "return",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^cout\s*<<\s*$/.test(trimmed) || /^print\s*\(\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_output",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cout\s*<</.test(trimmed) || /^print\s*\(/.test(trimmed)) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_output",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cout\s*<</.test(trimmed) || /^print\s*\(/.test(trimmed)) && /;\s*$/.test(trimmed)) {
-      return {
-        kind: "output",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^cin\s*>>\s*$/.test(trimmed) || /^input\s*\(\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_input",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cin\s*>>/.test(trimmed) || /^input\s*\(/.test(trimmed)) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_input",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cin\s*>>/.test(trimmed) || /^input\s*\(/.test(trimmed)) && /;\s*$/.test(trimmed)) {
-      return {
-        kind: "input",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^\{$/.test(trimmed)) {
-      return {
-        kind: "open_brace",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^\}$/.test(trimmed)) {
-      return {
-        kind: "close_brace",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^let\s+\w+\s*=\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_declaration",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^let\s+\w+\s*=/.test(trimmed) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_declaration",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^let\s+\w+\s*=.*;\s*$/.test(trimmed)) {
-      return {
-        kind: "declaration",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^\w+\s*=\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_assignment",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^\w+\s*=/.test(trimmed) && !/;\s*$/.test(trimmed) && !/==/.test(trimmed)) {
-      return {
-        kind: "unfinished_assignment",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^\w+\s*=.*;\s*$/.test(trimmed) && !/==/.test(trimmed)) {
-      return {
-        kind: "assignment",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^func\s+\w+\s*\([^)]*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_function_header",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^func\s+\w+\s*\([^)]*\)\s*$/.test(trimmed)) {
-      return {
-        kind: "function_header_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^func\s+\w+\s*\([^)]*\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "function_header",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (trimmed.endsWith(";")) {
-      return {
-        kind: "generic_statement",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (trimmed.endsWith("{")) {
-      return {
-        kind: "generic_block_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    return {
-      kind: "unfinished_unknown",
-      complete: false,
-      explainable: true,
-    };
-  }
-
-  function getLineHint(line) {
-    const trimmed = line.trim();
-    const state = classifyLineState(line);
-
-    switch (state.kind) {
-      case "incomplete_include":
-        return "You are starting an include line. Finish the library name and close it with >.";
-      case "incomplete_namespace":
-        return "You are starting a namespace line. End it with a semicolon.";
-      case "incomplete_main_signature":
-        return "You are starting the main function. Close the parentheses first.";
-      case "main_signature_waiting_block":
-        return "You finished the main function header. Add an opening curly brace to start its block.";
-      case "incomplete_if":
-        return "You are starting an if condition. Finish the condition and close the parenthesis.";
-      case "if_waiting_block":
-        return "Your if condition looks complete. Add an opening curly brace to start the block.";
-      case "else_waiting_block":
-        return "You wrote else. Add an opening curly brace to begin the alternative block.";
-      case "incomplete_while":
-        return "You are starting a while loop condition. Finish it and close the parenthesis.";
-      case "while_waiting_block":
-        return "Your while condition looks complete. Add an opening curly brace to begin the loop body.";
-      case "incomplete_for":
-        return "You are starting a for loop. Finish the loop header and close the parenthesis.";
-      case "for_waiting_block":
-        return "Your for loop header looks complete. Add an opening curly brace to begin the loop body.";
-      case "incomplete_return":
-        return "You are starting a return statement. Add a value or finish it with a semicolon.";
-      case "unfinished_return":
-        return "This return statement is not finished yet. End it with a semicolon.";
-      case "incomplete_output":
-        return "You are starting an output statement. Add what you want to print.";
-      case "unfinished_output":
-        return "This output line is not finished yet. Complete what should be printed and end the line properly.";
-      case "incomplete_input":
-        return "You are starting an input statement. Add the variable that should receive the value.";
-      case "unfinished_input":
-        return "This input line is not finished yet. Complete it and end the line properly.";
-      case "incomplete_declaration":
-        return "You started a variable declaration. Add the value that should be stored.";
-      case "unfinished_declaration":
-        return "This variable declaration is not finished yet. End it with a semicolon.";
-      case "incomplete_assignment":
-        return "You are starting an assignment. Add the value that should go on the right side.";
-      case "unfinished_assignment":
-        return "This assignment is not finished yet. End it with a semicolon.";
-      case "incomplete_function_header":
-        return "You are starting a function header. Finish the parameter list first.";
-      case "function_header_waiting_block":
-        return "The function header looks complete. Add an opening curly brace to start the function body.";
-      case "unfinished_unknown":
-        if (trimmed.endsWith("(")) {
-          return "This line looks unfinished. Close the parentheses and continue.";
-        }
-        return "Keep going — this line looks incomplete, so I am waiting before explaining it fully.";
-      default:
-        return "";
-    }
-  }
-
-  function buildFriendlyExplanation(line) {
-    const trimmed = line.trim();
-    const state = classifyLineState(line);
-
-    if (!trimmed) {
-      return "This line is empty, so nothing happens yet.";
-    }
-
-    switch (state.kind) {
-      case "include":
-        return "Here, you are adding a library so your program can use extra tools later.";
-      case "namespace":
-        return "Here, you are choosing a namespace so some names can be written more simply.";
-      case "main_start":
-        return "This is the main part of the program. When the program starts, it begins here.";
-      case "if_start":
-        return "This line checks a condition. If the condition is true, the block below will run.";
-      case "else_start":
-        return "This line starts the alternative block that runs when the earlier condition is false.";
-      case "while_start":
-        return "This line starts a loop. The block will keep running while the condition stays true.";
-      case "for_start":
-        return "This line starts a for loop. It repeats a block using a setup, a condition, and an update step.";
-      case "return":
-        return "This line ends the current function and sends a result back.";
-      case "output":
-        return "This line prints something so the user can see it.";
-      case "input":
-        return "This line reads a value from the user and stores it in a variable.";
-      case "open_brace":
-        return "This curly brace opens a new block of code.";
-      case "close_brace":
-        return "This curly brace closes the block of code above it.";
-      case "declaration":
-        return "This line creates a new variable and stores a value inside it.";
-      case "assignment":
-        return "This line changes a variable by giving it a new value.";
-      case "function_header":
-        return "This line defines a function, which is a named block of reusable code.";
-      case "generic_statement":
-        return "This line is a complete statement, so the program can carry it out.";
-      case "generic_block_start":
-        return "This line starts a new block of code.";
-      default:
-        if (/^#include\s*</.test(trimmed)) {
-          return "Here, you are adding a library so your program can use extra tools later.";
-        }
-
-        if (/^using\s+namespace\s+/.test(trimmed)) {
-          return "Here, you are choosing a namespace so some names can be written more simply.";
-        }
-
-        if (/^int\s+main\s*\(/.test(trimmed)) {
-          return "This is the main part of the program. When the program starts, it begins here.";
-        }
-
-        if (/^return\b/.test(trimmed)) {
-          return "This line ends the current function and sends a result back.";
-        }
-
-        if (/^let\s+/.test(trimmed)) {
-          return "This line creates a new variable and stores a value inside it.";
-        }
-
-        if (/^func\s+/.test(trimmed)) {
-          return "This line defines a function, which is a reusable block of code.";
-        }
-
-        if (/^if\s*\(/.test(trimmed)) {
-          return "This line checks a condition and decides whether the next block should run.";
-        }
-
-        if (/^else\b/.test(trimmed)) {
-          return "This line gives another path to run when the earlier condition is false.";
-        }
-
-        if (/^while\s*\(/.test(trimmed)) {
-          return "This line starts a loop that keeps running while its condition stays true.";
-        }
-
-        if (/^for\s*\(/.test(trimmed)) {
-          return "This line starts a loop with a setup, a condition, and an update step.";
-        }
-
-        if (/^print\s*\(/.test(trimmed) || /^cout\s*<</.test(trimmed)) {
-          return "This line sends output so the user can see a result.";
-        }
-
-        if (/^input\s*\(/.test(trimmed) || /^cin\s*>>/.test(trimmed)) {
-          return "This line reads input from the user and stores it in a variable.";
-        }
-
-        if (trimmed === "{") {
-          return "This curly brace opens a new block of code.";
-        }
-
-        if (trimmed === "}") {
-          return "This curly brace closes the block of code above it.";
-        }
-
-        if (/=/.test(trimmed) && !/==/.test(trimmed)) {
-          return "This line changes a variable by giving it a new value.";
-        }
-
-        if (/[+\-*/%]/.test(trimmed)) {
-          return "This line performs a calculation to produce a new value.";
-        }
-
-        return "This line is part of the program logic and helps the program move forward step by step.";
-    }
-  }
-
-  function buildLiveExplanationStepsFromSource(source) {
-    const lines = source.replace(/\r\n/g, "\n").split("\n");
-    const steps = [];
-
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
-      const state = classifyLineState(line);
-
-      if (!state.explainable || !state.complete) continue;
-
-      steps.push({
-        lineNumber: i + 1,
-        code: line,
-        explanation: buildFriendlyExplanation(line),
-        live: true,
-      });
-    }
-
-    return steps;
   }
 
   function getLastNonEmptyLineInfo(source) {
@@ -775,6 +245,26 @@ async function loadInterpreterModule() {
     return null;
   }
 
+  function buildLiveExplanationStepsFromSource(source) {
+    const lines = source.replace(/\r\n/g, "\n").split("\n");
+    const steps = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+      if (!isCompleteThought(line)) continue;
+
+      steps.push({
+        lineNumber: i + 1,
+        code: line,
+        explanation: buildFriendlyExplanation(line),
+        live: true,
+      });
+    }
+
+    return steps;
+  }
+
   function renderLiveExplanationPreview(source) {
     if (!explanationsPanel) return;
 
@@ -785,27 +275,6 @@ async function loadInterpreterModule() {
       explanationSteps = [];
       currentStepIndex = -1;
       renderEmptyExplanationState();
-      return;
-    }
-
-    const waitingNote =
-      lastNonEmpty && !classifyLineState(lastNonEmpty.line).complete
-        ? `
-          <div class="explanation-block explanation-block--pending">
-            <p class="explanation-code">Line ${lastNonEmpty.lineNumber}: ${escapeHtml(lastNonEmpty.line)}</p>
-            <p class="explanation-text explanation-text--pending">
-              ${escapeHtml(getLineHint(lastNonEmpty.line) || "Keep going — this line looks incomplete, so I am waiting before explaining it fully.")}
-            </p>
-          </div>
-        `
-        : "";
-
-    if (!liveSteps.length && waitingNote) {
-      explanationsPanel.innerHTML = `
-        <div class="explanation-list">
-          ${waitingNote}
-        </div>
-      `;
       return;
     }
 
@@ -820,6 +289,18 @@ async function loadInterpreterModule() {
       `;
       return;
     }
+
+    const waitingNote =
+      lastNonEmpty && !isCompleteThought(lastNonEmpty.line)
+        ? `
+          <div class="explanation-block explanation-block--pending">
+            <p class="explanation-code">Line ${lastNonEmpty.lineNumber}: ${escapeHtml(lastNonEmpty.line)}</p>
+            <p class="explanation-text explanation-text--pending">
+              Keep going — this line looks incomplete, so I am waiting before explaining it.
+            </p>
+          </div>
+        `
+        : "";
 
     explanationsPanel.innerHTML = `
       <div class="explanation-list">
@@ -839,23 +320,97 @@ async function loadInterpreterModule() {
     `;
   }
 
-  function buildExplanationStepsFromSource(source) {
-    const lines = source.replace(/\r\n/g, "\n").split("\n");
-    const steps = [];
+  function buildFriendlyExplanation(line) {
+    const trimmed = line.trim();
 
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
-      if (!line.trim()) continue;
-
-      steps.push({
-        lineNumber: i + 1,
-        code: line,
-        explanation: buildFriendlyExplanation(line),
-      });
+    if (!trimmed) {
+      return "This line is empty, so nothing happens yet.";
     }
 
-    return steps;
+    if (/^#include\s*</.test(trimmed)) {
+      return "This line adds a library. It gives your program extra tools it can use later.";
+    }
+
+    if (/^using\s+namespace\s+/.test(trimmed)) {
+      return "This line tells the program which namespace to use so names can be written more simply.";
+    }
+
+    if (/^int\s+main\s*\(/.test(trimmed)) {
+      return "This is the main part of the program. When the program starts, it begins here.";
+    }
+
+    if (/^return\b/.test(trimmed)) {
+      return "This line ends the current function and sends a result back.";
+    }
+
+    if (/^let\s+/.test(trimmed)) {
+      return "This line creates a new variable and stores a value inside it.";
+    }
+
+    if (/^func\s+/.test(trimmed)) {
+      return "This line defines a function, which is a reusable block of code.";
+    }
+
+    if (/^if\s*\(/.test(trimmed)) {
+      return "This line checks a condition and decides whether the next block should run.";
+    }
+
+    if (/^else\b/.test(trimmed)) {
+      return "This line gives the alternative block to run when the previous condition is false.";
+    }
+
+    if (/^while\s*\(/.test(trimmed)) {
+      return "This line starts a loop that keeps running while its condition stays true.";
+    }
+
+    if (/^for\s*\(/.test(trimmed)) {
+      return "This line starts a loop with a setup, a condition, and an update step.";
+    }
+
+    if (/^print\s*\(/.test(trimmed) || /^cout\s*<</.test(trimmed)) {
+      return "This line sends output so the user can see a result.";
+    }
+
+    if (/^input\s*\(/.test(trimmed) || /^cin\s*>>/.test(trimmed)) {
+      return "This line reads input from the user and stores it in a variable.";
+    }
+
+    if (trimmed === "{") {
+      return "This opening brace starts a new code block.";
+    }
+
+    if (trimmed === "}") {
+      return "This curly brace closes the block of code above it.";
+    }
+
+    if (/=/.test(trimmed) && !/==/.test(trimmed)) {
+      return "This line updates a variable by putting a value into it.";
+    }
+
+    if (/[+\-*/%]/.test(trimmed)) {
+      return "This line performs a calculation to produce a new value.";
+    }
+
+    return "This line is part of the program logic and helps the program move forward step by step.";
   }
+
+function buildExplanationStepsFromSource(source) {
+  const lines = source.replace(/\r\n/g, "\n").split("\n");
+  const steps = [];
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+
+    steps.push({
+      lineNumber: i + 1,
+      code: line,
+      explanation: buildFriendlyExplanation(line),
+    });
+  }
+
+  return steps;
+}
 
   function parseTraceJsonl(traceJsonl) {
     if (!traceJsonl || !traceJsonl.trim()) return [];
@@ -878,130 +433,117 @@ async function loadInterpreterModule() {
     return events;
   }
 
-  function buildExplanationStepsFromTrace(events, source) {
-    const sourceLines = source.replace(/\r\n/g, "\n").split("\n");
-    const traceMap = new Map();
+function buildExplanationStepsFromTrace(events, source) {
+  const sourceLines = source.replace(/\r\n/g, "\n").split("\n");
+  const traceMap = new Map();
 
-    for (const event of events) {
-      const lineNumber = event?.loc?.line;
-      if (!lineNumber || lineNumber < 1 || lineNumber > sourceLines.length) continue;
+  for (const event of events) {
+    const lineNumber = event?.loc?.line;
+    if (!lineNumber || lineNumber < 1 || lineNumber > sourceLines.length) continue;
 
-      const code = sourceLines[lineNumber - 1] || "";
-      if (!code.trim()) continue;
+    const code = sourceLines[lineNumber - 1] || "";
+    if (!code.trim()) continue;
 
-      let explanation = "";
+    let explanation = "";
 
-      switch (event.type) {
-        case "VarDeclare":
-          explanation = `At this step, the program creates a variable${event.name ? ` named ${event.name}` : ""}.`;
-          break;
-        case "VarWrite":
-          explanation = `At this step, the program updates a variable${event.value !== undefined ? ` with the value ${event.value}` : ""}.`;
-          break;
-        case "VarRead":
-          explanation = "At this step, the program reads a variable so it can use its value.";
-          break;
-        case "BranchDecision":
-          explanation = "At this step, the program checks a condition and chooses which path to follow.";
-          break;
-        case "LoopCheck":
-          explanation = "At this step, the program checks whether the loop should continue.";
-          break;
-        case "CallStart":
-        case "CallEnter":
-          explanation = "At this step, the program enters a function call.";
-          break;
-        case "Return":
-          explanation = "At this step, the function finishes and gives control back.";
-          break;
-        case "Print":
-          explanation = "At this step, the program sends something to the output area.";
-          break;
-        case "Error":
-          explanation = "At this step, the program finds an error and stops.";
-          break;
-        default:
-          continue;
-      }
-
-      traceMap.set(lineNumber, {
-        lineNumber,
-        code,
-        explanation,
-      });
+    switch (event.type) {
+      case "VarDeclare":
+        explanation = `A new variable named ${event.name ?? "unknown"} is created here.`;
+        break;
+      case "VarWrite":
+        explanation = `A variable is updated here with a new value${event.value !== undefined ? `: ${event.value}` : ""}.`;
+        break;
+      case "VarRead":
+        explanation = "The program reads a variable value here so it can keep working.";
+        break;
+      case "BranchDecision":
+        explanation = "The program checks a condition here and decides which path to follow.";
+        break;
+      case "LoopCheck":
+        explanation = "The loop condition is checked here to decide whether to continue.";
+        break;
+      case "CallStart":
+      case "CallEnter":
+        explanation = "A function call begins here.";
+        break;
+      case "Return":
+        explanation = "The function finishes here and returns control.";
+        break;
+      case "Print":
+        explanation = "This step sends something to the output area.";
+        break;
+      case "Error":
+        explanation = "Something went wrong here, so the program stops and reports the problem.";
+        break;
+      default:
+        continue;
     }
 
-    return traceMap;
-  }
-
-  function mergeExplanationSteps(sourceSteps, traceMap) {
-    return sourceSteps.map((step) => {
-      const traced = traceMap.get(step.lineNumber);
-      if (!traced) return step;
-
-      return {
-        lineNumber: step.lineNumber,
-        code: step.code,
-        explanation: traced.explanation || step.explanation,
-      };
+    traceMap.set(lineNumber, {
+      lineNumber,
+      code,
+      explanation,
     });
   }
 
+function mergeExplanationSteps(sourceSteps, traceMap) {
+  return sourceSteps.map((step) => {
+    const traced = traceMap.get(step.lineNumber);
+    if (!traced) return step;
+
+    return {
+      lineNumber: step.lineNumber,
+      code: step.code,
+      explanation: traced.explanation || step.explanation,
+    };
+  });
+}
+
+  const uniqueSteps = [];
+  const seenLineNumbers = new Set();
+
+  for (const step of traceMap.values()) {
+    if (seenLineNumbers.has(step.lineNumber)) continue;
+    seenLineNumbers.add(step.lineNumber);
+    uniqueSteps.push(step);
+  }
+
+  return uniqueSteps.sort((a, b) => a.lineNumber - b.lineNumber);
+}
+
   async function tryRunWithWasm(source) {
-    if (!wasmModule) {
-      await loadInterpreterModule();
-    }
+  if (!wasmModule) {
+    await loadInterpreterModule();
+  }
 
-    if (!wasmModule) {
-      return {
-        ok: false,
-        error_text: "The interpreter module could not be loaded.",
-        stdout_text: "",
-        trace_jsonl: "",
-      };
-    }
+  if (!wasmModule) {
+    return {
+      ok: false,
+      error_text: "The interpreter module could not be loaded.",
+      stdout_text: "",
+      trace_jsonl: "",
+    };
+  }
 
-    try {
-      if (typeof wasmModule.run_source_to_trace === "function") {
-        const rawResult = wasmModule.run_source_to_trace(source);
-        let parsed = rawResult;
+  try {
+    if (typeof wasmModule.run_source_to_trace === "function") {
+      const rawResult = wasmModule.run_source_to_trace(source);
+      let parsed = rawResult;
 
-        if (typeof rawResult === "string") {
-          try {
-            parsed = JSON.parse(rawResult);
-          } catch (_error) {
-            parsed = {
-              ok: false,
-              error_text: "Interpreter returned a non-JSON string result.",
-              stdout_text: "",
-              trace_jsonl: "",
-            };
-          }
-        }
-
-        if (parsed && typeof parsed === "object") {
-          return {
-            ok: !!parsed.ok,
-            trace_jsonl: parsed.trace_jsonl || "",
-            stdout_text: parsed.stdout_text || "",
-            error_text: parsed.error_text || "",
+      if (typeof rawResult === "string") {
+        try {
+          parsed = JSON.parse(rawResult);
+        } catch (_error) {
+          parsed = {
+            ok: false,
+            error_text: "Interpreter returned a non-JSON string result.",
+            stdout_text: "",
+            trace_jsonl: "",
           };
         }
       }
 
-      if (typeof wasmModule.ccall === "function") {
-        const raw = wasmModule.ccall(
-          "run_source_to_trace",
-          "string",
-          ["string"],
-          [source]
-        );
-
-        let parsed = raw;
-        if (typeof raw === "string") {
-          parsed = JSON.parse(raw);
-        }
-
+      if (parsed && typeof parsed === "object") {
         return {
           ok: !!parsed.ok,
           trace_jsonl: parsed.trace_jsonl || "",
@@ -1009,87 +551,109 @@ async function loadInterpreterModule() {
           error_text: parsed.error_text || "",
         };
       }
+    }
+
+    if (typeof wasmModule.ccall === "function") {
+      const raw = wasmModule.ccall(
+        "run_source_to_trace",
+        "string",
+        ["string"],
+        [source]
+      );
+
+      let parsed = raw;
+      if (typeof raw === "string") {
+        parsed = JSON.parse(raw);
+      }
 
       return {
-        ok: false,
-        error_text: "No compatible interpreter entry point was found.",
-        stdout_text: "",
-        trace_jsonl: "",
-      };
-    } catch (error) {
-      return {
-        ok: false,
-        error_text: error?.message || "Unknown interpreter error.",
-        stdout_text: "",
-        trace_jsonl: "",
+        ok: !!parsed.ok,
+        trace_jsonl: parsed.trace_jsonl || "",
+        stdout_text: parsed.stdout_text || "",
+        error_text: parsed.error_text || "",
       };
     }
+
+    return {
+      ok: false,
+      error_text: "No compatible interpreter entry point was found.",
+      stdout_text: "",
+      trace_jsonl: "",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error_text: error?.message || "Unknown interpreter error.",
+      stdout_text: "",
+      trace_jsonl: "",
+    };
+  }
+}
+
+async function runProgram() {
+  console.log("Run button clicked.");
+
+  clearInlineError();
+
+  const source = sourceInput ? sourceInput.value : "";
+  console.log("Source content:", source);
+
+  if (!source.trim()) {
+    showInlineError("Please write or upload some code first.");
+    setOutput("Ready.");
+    explanationSteps = [];
+    currentStepIndex = -1;
+    renderEmptyExplanationState();
+    return;
   }
 
-  async function runProgram() {
-    console.log("Run button clicked.");
+  setOutput("Running...");
 
-    clearInlineError();
+  const sourceSteps = buildExplanationStepsFromSource(source);
+  explanationSteps = sourceSteps;
+  currentStepIndex = explanationSteps.length ? 0 : -1;
+  renderCurrentExplanationStep();
 
-    const source = sourceInput ? sourceInput.value : "";
-    console.log("Source content:", source);
+  const result = await tryRunWithWasm(source);
+  console.log("WASM result:", result);
 
-    if (!source.trim()) {
-      showInlineError("Please write or upload some code first.");
-      setOutput("Ready.");
-      explanationSteps = [];
-      currentStepIndex = -1;
-      renderEmptyExplanationState();
-      return;
-    }
-
-    setOutput("Running...");
-
-    const sourceSteps = buildExplanationStepsFromSource(source);
-    explanationSteps = sourceSteps;
-    currentStepIndex = explanationSteps.length ? 0 : -1;
-    renderCurrentExplanationStep();
-
-    const result = await tryRunWithWasm(source);
-    console.log("WASM result:", result);
-
-    if (!result.ok) {
-      const friendlyError = result.error_text || "The program could not run.";
-      showInlineError(friendlyError);
-      setOutput("Run stopped because of an error.");
-
-      saveHistoryItem({
-        createdAt: new Date().toISOString(),
-        source,
-        ok: false,
-        output: "",
-        error: friendlyError,
-      });
-
-      return;
-    }
-
-    setOutput(result.stdout_text || "Program finished successfully.");
-    hasRunAtLeastOnce = true;
-
-    const events = parseTraceJsonl(result.trace_jsonl);
-    const traceMap = buildExplanationStepsFromTrace(events, source);
-    const mergedSteps = mergeExplanationSteps(sourceSteps, traceMap);
-
-    explanationSteps = mergedSteps;
-    currentStepIndex = explanationSteps.length ? 0 : -1;
-    renderCurrentExplanationStep();
+  if (!result.ok) {
+    const friendlyError = result.error_text || "The program could not run.";
+    showInlineError(friendlyError);
+    setOutput("Run stopped because of an error.");
 
     saveHistoryItem({
       createdAt: new Date().toISOString(),
       source,
-      ok: true,
-      output: result.stdout_text || "",
-      error: "",
+      ok: false,
+      output: "",
+      error: friendlyError,
     });
+
+    return;
   }
 
-  function clearWorkspace() {
+  setOutput(result.stdout_text || "Program finished successfully.");
+  hasRunAtLeastOnce = true;
+
+  const events = parseTraceJsonl(result.trace_jsonl);
+  const traceMap = buildExplanationStepsFromTrace(events, source);
+  const mergedSteps = mergeExplanationSteps(sourceSteps, traceMap);
+
+  explanationSteps = mergedSteps;
+  currentStepIndex = explanationSteps.length ? 0 : -1;
+  renderCurrentExplanationStep();
+
+  saveHistoryItem({
+    createdAt: new Date().toISOString(),
+    source,
+    ok: true,
+    output: result.stdout_text || "",
+    error: "",
+  });
+}
+
+   function clearWorkspace() {
     stopPlayback();
     clearInlineError();
 
@@ -1195,51 +759,51 @@ async function loadInterpreterModule() {
     );
   }
 
-  function wireEvents() {
-    fileInput?.addEventListener("change", handleFileUpload);
-    runBtn?.addEventListener("click", runProgram);
-    clearBtn?.addEventListener("click", clearWorkspace);
-    saveBtn?.addEventListener("click", showHistory);
+ function wireEvents() {
+  fileInput?.addEventListener("change", handleFileUpload);
+  runBtn?.addEventListener("click", runProgram);
+  clearBtn?.addEventListener("click", clearWorkspace);
+  saveBtn?.addEventListener("click", showHistory);
 
-    howToUseBtn?.addEventListener("click", showHowToUse);
-    historyBtn?.addEventListener("click", showHistory);
-    accountBtn?.addEventListener("click", showAccountMessage);
+  howToUseBtn?.addEventListener("click", showHowToUse);
+  historyBtn?.addEventListener("click", showHistory);
+  accountBtn?.addEventListener("click", showAccountMessage);
 
-    editorFontSize?.addEventListener("change", () => {
-      editorStyleState.size = Number(editorFontSize.value) || 16;
-      applyEditorStyles();
-    });
+  editorFontSize?.addEventListener("change", () => {
+    editorStyleState.size = Number(editorFontSize.value) || 16;
+    applyEditorStyles();
+  });
 
-    boldTextBtn?.addEventListener("click", () => {
-      editorStyleState.bold = !editorStyleState.bold;
-      applyEditorStyles();
-      setToolbarActiveState(boldTextBtn, editorStyleState.bold);
-    });
+  boldTextBtn?.addEventListener("click", () => {
+    editorStyleState.bold = !editorStyleState.bold;
+    applyEditorStyles();
+    setToolbarActiveState(boldTextBtn, editorStyleState.bold);
+  });
 
-    italicTextBtn?.addEventListener("click", () => {
-      editorStyleState.italic = !editorStyleState.italic;
-      applyEditorStyles();
-      setToolbarActiveState(italicTextBtn, editorStyleState.italic);
-    });
+  italicTextBtn?.addEventListener("click", () => {
+    editorStyleState.italic = !editorStyleState.italic;
+    applyEditorStyles();
+    setToolbarActiveState(italicTextBtn, editorStyleState.italic);
+  });
 
-    underlineTextBtn?.addEventListener("click", () => {
-      editorStyleState.underline = !editorStyleState.underline;
-      applyEditorStyles();
-      setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
-    });
+  underlineTextBtn?.addEventListener("click", () => {
+    editorStyleState.underline = !editorStyleState.underline;
+    applyEditorStyles();
+    setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
+  });
 
-    sourceInput?.addEventListener("input", () => {
-      clearInlineError();
+  sourceInput?.addEventListener("input", () => {
+    clearInlineError();
 
-      if (liveExplainTimer) {
-        window.clearTimeout(liveExplainTimer);
-      }
+    if (liveExplainTimer) {
+      window.clearTimeout(liveExplainTimer);
+    }
 
-      liveExplainTimer = window.setTimeout(() => {
-        renderLiveExplanationPreview(sourceInput.value);
-      }, 120);
-    });
-  }
+    liveExplainTimer = window.setTimeout(() => {
+      renderLiveExplanationPreview(sourceInput.value);
+    }, 220);
+  });
+}
 
   async function init() {
     renderEmptyExplanationState();
