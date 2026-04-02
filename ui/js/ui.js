@@ -183,19 +183,21 @@ function clearFeedback() {
     button.style.color = isActive ? "var(--primary-dark)" : "var(--text)";
   }
 
-  function renderEmptyExplanationState() {
-    if (!explanationsPanel) return;
+function renderEmptyExplanationState() {
+  if (!explanationsPanel) return;
 
-    explanationsPanel.innerHTML = `
-      <div class="empty-state">
-        <div>
-          <h3>Ready to explain your code</h3>
-          <p>Your code explanations will appear here after you run the program.</p>
-        </div>
-      </div>
-    `;
-  }
+  const message =
+    currentInterpreterMode === "explain"
+      ? "Your source-based explanation will appear here after you click Explain."
+      : "Your code explanations will appear here after you run the program.";
 
+  explanationsPanel.innerHTML = `
+    <div class="empty-state">
+      <h3>Ready to explain your code</h3>
+      <p>${message}</p>
+    </div>
+  `;
+}
 function renderCurrentExplanationStep() {
   if (!explanationsPanel) return;
 
@@ -524,6 +526,10 @@ function setInterpreterMode(mode) {
     readingModeBtn.setAttribute("aria-pressed", String(!isRunMode));
   }
 
+  if (!explanationSteps.length) {
+    renderEmptyExplanationState();
+  }
+
   if (modeDescription) {
     if (isRunMode) {
       modeDescription.textContent = isExecutionFriendlyLanguage(detectedLanguage)
@@ -718,6 +724,7 @@ try {
   }
 } catch (error) {
   console.warn("Failed to delete history item:", error);
+}
 }
 
 function openHistoryPanel() {
@@ -1004,7 +1011,7 @@ function runReadingMode(source) {
         explainable: true,
       };
     }
-  }
+  
 
     if (/^return\b.*;\s*$/.test(trimmed)) {
       return {
