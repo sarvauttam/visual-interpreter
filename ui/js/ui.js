@@ -36,6 +36,14 @@ async function loadInterpreterModule() {
   const historyBtn = $("historyBtn");
   const accountBtn = $("accountBtn");
 
+  const rememberHistoryToggle = $("rememberHistoryToggle");
+  const historyPanel = $("historyPanel");
+  const historyBackdrop = $("historyBackdrop");
+  const historyList = $("historyList");
+  const historyEmptyState = $("historyEmptyState");
+  const clearHistoryBtn = $("clearHistoryBtn");
+  const closeHistoryBtn = $("closeHistoryBtn");
+
   const editorFontSize = $("editorFontSize");
   const boldTextBtn = $("boldTextBtn");
   const italicTextBtn = $("italicTextBtn");
@@ -48,6 +56,9 @@ async function loadInterpreterModule() {
 
   const STORAGE_KEY = "isee_code_history";
   const MAX_HISTORY_ITEMS = 12;
+  const REMEMBER_HISTORY_KEY = "isee_code_remember_history";
+  let lastInterpretationSnapshot = null;
+  let sessionHasInterpretation = false;
 
   let explanationSteps = [];
   let currentStepIndex = -1;
@@ -177,16 +188,13 @@ function renderCurrentExplanationStep() {
   }
 
   function updateHistoryButtonState() {
+    const saved = loadHistory();
+    const shouldBeActive = sessionHasInterpretation || saved.length > 0;
+
     if (!historyBtn) return;
 
-    const history = loadHistory();
-    const hasHistory = history.length > 0;
-
-    if (hasHistory) {
-      historyBtn.classList.remove("nav-btn--muted");
-    } else {
-      historyBtn.classList.add("nav-btn--muted");
-    }
+    historyBtn.classList.toggle("nav-btn--muted", !shouldBeActive);
+    historyBtn.classList.toggle("nav-btn--disabled", !shouldBeActive);
   }
 
   function loadHistory() {
@@ -212,6 +220,172 @@ function renderCurrentExplanationStep() {
       console.warn("Failed to save history:", error);
     }
   }
+
+  function getRememberPreference() {
+  try {
+    const raw = localStorage.getItem(REMEMBER_HISTORY_KEY);
+    return raw === null ? true : raw === "true";
+  } catch (_error) {
+    return true;
+  }
+}
+
+function setRememberPreference(value) {
+  try {
+    localStorage.setItem(REMEMBER_HISTORY_KEY, String(!!value));
+  } catch (error) {
+    console.warn("Failed to store remember preference:", error);
+  }
+}
+
+function inferLanguageFromSource(source) {
+  const text = source || "";
+  if (/#include\s*</.test(text) || /\busing\s+namespace\b/.test(text) || /\bint\s+main\s*\(/.test(text)) {
+    return "C++";
+  }
+  return "Unknown";
+}
+
+function buildHistoryTitle(source) {
+  const lines = source.replace(/\r\n/g, "\n").split("\n").map((line) => line.trim()).filter(Boolean);
+  return lines[0]?.slice(0, 60) || "Untitled interpretation";
+}
+
+function serializeExplanation(steps) {
+  if (!Array.isArray(steps) || !steps.length) return "";
+  return steps
+    .map((step) => `Line ${step.lineNumber}: ${step.explanation || ""}`)
+    .join("\n");
+}
+
+function buildInterpretationRecord({ mode = "run", source, output, explanationSteps }) {
+  return {
+    id: `history_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    title: buildHistoryTitle(source),
+    date: new Date().toISOString(),
+    sourceCode: source,
+    explanation: serializeExplanation(explanationSteps),
+    output: output || "",
+    languageGuess: inferLanguageFromSource(source),
+    mode,
+  };
+}
+
+function activateHistoryUI() {
+  sessionHasInterpretation = true;
+  if (historyBtn) {
+    historyBtn.classList.remove("nav-btn--muted");
+    historyBtn.classList.remove("nav-btn--disabled");
+  }
+}
+
+function deactivateHistoryUI() {
+  const saved = loadHistory();
+  if (saved.length > 0) {
+    if (historyBtn) {
+      historyBtn.classList.remove("nav-btn--muted");
+      historyBtn.classList.remove("nav-btn--disabled");
+    }
+    return;
+  }
+
+  if (!sessionHasInterpretation && historyBtn) {
+    historyBtn.classList.add("nav-btn--muted");
+    historyBtn.classList.add("nav-btn--disabled");
+  }
+}
+
+function renderHistoryList() {
+  if (!historyList || !historyEmptyState) return;
+
+  const items = loadHistory();
+
+  if (!items.length) {
+    historyList.classList.add("hidden");
+    historyEmptyState.classList.remove("hidden");
+    return;
+  }
+
+  historyEmptyState.classList.add("hidden");
+  historyList.classList.remove("hidden");
+
+  historyList.innerHTML = items.map((item) => `
+    <article class="history-card" data-history-id="${item.id}">
+      <div class="history-card__top">
+        <div>
+          <h3 class="history-card__title">${escapeHtml(item.title || "Untitled interpretation")}</h3>
+          <p class="history-card__meta">${escapeHtml(new Date(item.date).toLocaleString())}</p>
+        </div>
+      </div>
+
+      <div class="history-card__badges">
+        <span class="history-badge">${escapeHtml(item.languageGuess || "Unknown")}</span>
+        <span class="history-badge">${escapeHtml(item.mode || "run")}</span>
+      </div>
+
+      <pre class="history-card__preview">${escapeHtml((item.sourceCode || "").slice(0, 240))}</pre>
+
+      <div class="history-card__actions">
+        <button class="history-load-btn" type="button" data-load-history-id="${item.id}">
+          Load
+        </button>
+      </div>
+    </article>
+  `).join("");
+}
+
+function openHistoryPanel() {
+  renderHistoryList();
+  if (historyPanel) {
+    historyPanel.classList.remove("hidden");
+    historyPanel.setAttribute("aria-hidden", "false");
+  }
+  if (historyBackdrop) {
+    historyBackdrop.classList.remove("hidden");
+  }
+}
+
+function closeHistoryPanel() {
+  if (historyPanel) {
+    historyPanel.classList.add("hidden");
+    historyPanel.setAttribute("aria-hidden", "true");
+  }
+  if (historyBackdrop) {
+    historyBackdrop.classList.add("hidden");
+  }
+}
+
+function loadHistoryItemIntoWorkspace(itemId) {
+  const items = loadHistory();
+  const item = items.find((entry) => entry.id === itemId);
+  if (!item) return;
+
+  if (sourceInput) {
+    sourceInput.value = item.sourceCode || "";
+  }
+
+  explanationSteps = [];
+  if (item.explanation) {
+    explanationSteps = item.explanation.split("\n").map((line, index) => ({
+      lineNumber: index + 1,
+      code: "",
+      explanation: line,
+    }));
+  }
+
+  setOutput(item.output || "Ready.");
+
+  if (explanationsPanel) {
+    explanationsPanel.innerHTML = `
+      <div class="explanation-block">
+        <p class="explanation-text">${escapeHtml(item.explanation || "No explanation saved.")}</p>
+      </div>
+    `;
+  }
+
+  activateHistoryUI();
+  closeHistoryPanel();
+}
 
   function isCompleteThought(line) {
     const trimmed = line.trim();
@@ -1060,14 +1234,6 @@ async function runProgram() {
     showInlineError(friendlyError);
     setOutput("Run stopped because of an error.");
 
-    saveHistoryItem({
-      createdAt: new Date().toISOString(),
-      source,
-      ok: false,
-      output: "",
-      error: friendlyError,
-    });
-
     return;
   }
 
@@ -1082,18 +1248,39 @@ async function runProgram() {
   currentStepIndex = explanationSteps.length ? 0 : -1;
   renderCurrentExplanationStep();
 
-  saveHistoryItem({
-    createdAt: new Date().toISOString(),
+  activateHistoryUI();
+  updateHistoryButtonState();
+
+  lastInterpretationSnapshot = buildInterpretationRecord({
+    mode: "run",
     source,
-    ok: true,
     output: result.stdout_text || "",
-    error: "",
+    explanationSteps: mergedSteps,
   });
+}
+
+function handleSaveInterpretation() {
+  clearInlineError();
+
+  if (!lastInterpretationSnapshot) {
+    showInlineError("Run an interpretation first, then save it.");
+    return;
+  }
+
+  if (!getRememberPreference()) {
+    showInlineError("“Remember on this device” is off, so this interpretation was not saved.");
+    return;
+  }
+
+  saveHistoryItem(lastInterpretationSnapshot);
+  renderHistoryList();
+  updateHistoryButtonState();
 }
 
   function clearWorkspace() {
     stopPlayback();
     clearInlineError();
+    lastInterpretationSnapshot = null;
 
     if (liveExplainTimer) {
       window.clearTimeout(liveExplainTimer);
@@ -1201,11 +1388,40 @@ function wireEvents() {
   fileInput?.addEventListener("change", handleFileUpload);
   runBtn?.addEventListener("click", runProgram);
   clearBtn?.addEventListener("click", clearWorkspace);
-  saveBtn?.addEventListener("click", showHistory);
-
   howToUseBtn?.addEventListener("click", showHowToUse);
-  historyBtn?.addEventListener("click", showHistory);
   accountBtn?.addEventListener("click", showAccountMessage);
+
+  saveBtn?.addEventListener("click", handleSaveInterpretation);
+  historyBtn?.addEventListener("click", () => {
+    const saved = loadHistory();
+    if (!sessionHasInterpretation && saved.length === 0) return;
+    openHistoryPanel();
+  });
+
+  closeHistoryBtn?.addEventListener("click", closeHistoryPanel);
+
+historyBackdrop?.addEventListener("click", closeHistoryPanel);
+
+clearHistoryBtn?.addEventListener("click", () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    renderHistoryList();
+    updateHistoryButtonState();
+    closeHistoryPanel();
+  } catch (error) {
+    console.warn("Failed to clear history:", error);
+  }
+});
+
+rememberHistoryToggle?.addEventListener("change", (event) => {
+  setRememberPreference(!!event.target.checked);
+});
+
+historyList?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-load-history-id]");
+  if (!button) return;
+  loadHistoryItemIntoWorkspace(button.getAttribute("data-load-history-id"));
+});
 
   editorFontSize?.addEventListener("change", () => {
     editorStyleState.size = Number(editorFontSize.value) || 16;
@@ -1243,17 +1459,24 @@ function wireEvents() {
   });
 }
 
-  async function init() {
-    renderEmptyExplanationState();
-    setOutput("Ready.");
-    applyEditorStyles();
-    setToolbarActiveState(boldTextBtn, false);
-    setToolbarActiveState(italicTextBtn, false);
-    setToolbarActiveState(underlineTextBtn, false);
-    updateHistoryButtonState();
-    wireEvents();
-    await loadInterpreterModule();
+async function init() {
+  renderEmptyExplanationState();
+  setOutput("Ready.");
+  applyEditorStyles();
+  setToolbarActiveState(boldTextBtn, false);
+  setToolbarActiveState(italicTextBtn, false);
+  setToolbarActiveState(underlineTextBtn, false);
+
+  if (rememberHistoryToggle) {
+    rememberHistoryToggle.checked = getRememberPreference();
   }
+
+  updateHistoryButtonState();
+  renderHistoryList();
+
+  wireEvents();
+  await loadInterpreterModule();
+}
 
   init();
 })();

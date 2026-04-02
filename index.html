@@ -101,7 +101,12 @@
           <p class="panel__subtext">Program results will appear below.</p>
         </div>
 
-        <button id="saveBtn" class="action-btn" type="button">Save</button>
+        <button id="saveBtn" class="action-btn" type="button">Save Interpretation</button>
+
+        <label class="remember-toggle" for="rememberHistoryToggle">
+          <input id="rememberHistoryToggle" type="checkbox" checked />
+          <span>Remember on this device</span>
+        </label>
       </div>
 
       <pre id="outputPanel" class="output-panel">Ready.</pre>
@@ -117,6 +122,37 @@
   console.log("typeof VisualInterpreterModule:", typeof VisualInterpreterModule);
   console.log("typeof Module:", typeof Module);
 </script>
+
+<aside
+  id="historyPanel"
+  class="history-panel hidden"
+  aria-labelledby="historyTitle"
+  aria-hidden="true"
+>
+  <div class="history-panel__header">
+    <div>
+      <h2 id="historyTitle">History</h2>
+      <p class="panel__subtext">Saved interpretations on this device.</p>
+    </div>
+
+    <div class="history-panel__actions">
+      <button id="clearHistoryBtn" class="action-btn" type="button">Clear History</button>
+      <button id="closeHistoryBtn" class="action-btn" type="button">Close</button>
+    </div>
+  </div>
+
+  <div id="historyEmptyState" class="empty-state">
+    <div>
+      <h3>No saved interpretations yet</h3>
+      <p>Run code, then use “Save Interpretation” to keep it here.</p>
+    </div>
+  </div>
+
+  <div id="historyList" class="history-list hidden"></div>
+</aside>
+
+<div id="historyBackdrop" class="history-backdrop hidden" aria-hidden="true"></div>
+
 <script src="./ui/js/ui.js"></script>
 </body>
 </html>
