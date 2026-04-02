@@ -230,404 +230,514 @@ async function loadInterpreterModule() {
     return false;
   }
 
-  function classifyLineState(line) {
-    const trimmed = line.trim();
+function classifyLineState(line) {
+  const trimmed = line.trim();
 
-    if (!trimmed) {
-      return {
-        kind: "empty",
-        complete: false,
-        explainable: false,
-      };
-    }
-
-    if (/^#include\s*</.test(trimmed) && !/>$/.test(trimmed)) {
-      return {
-        kind: "incomplete_include",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^#include\s*<[^>]+>\s*$/.test(trimmed)) {
-      return {
-        kind: "include",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^using\s+namespace\b/.test(trimmed) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_namespace",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^using\s+namespace\s+\w+\s*;\s*$/.test(trimmed)) {
-      return {
-        kind: "namespace",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^int\s+main\s*\($/.test(trimmed)) {
-      return {
-        kind: "incomplete_main_signature",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^int\s+main\s*\(\)\s*$/.test(trimmed)) {
-      return {
-        kind: "main_signature_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^int\s+main\s*\(\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "main_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^if\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_if",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^if\s*\([^)]+\)\s*$/.test(trimmed)) {
-      return {
-        kind: "if_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^if\s*\([^)]+\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "if_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^else\s*$/.test(trimmed)) {
-      return {
-        kind: "else_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^else\s*\{$/.test(trimmed)) {
-      return {
-        kind: "else_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^while\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_while",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^while\s*\([^)]+\)\s*$/.test(trimmed)) {
-      return {
-        kind: "while_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^while\s*\([^)]+\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "while_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^for\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_for",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^for\s*\([^)]+\)\s*$/.test(trimmed)) {
-      return {
-        kind: "for_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^for\s*\([^)]+\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "for_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^return\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_return",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^return\b/.test(trimmed) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_return",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^return\b.*;\s*$/.test(trimmed)) {
-      return {
-        kind: "return",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^cout\s*<<\s*$/.test(trimmed) || /^print\s*\(\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_output",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cout\s*<</.test(trimmed) || /^print\s*\(/.test(trimmed)) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_output",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cout\s*<</.test(trimmed) || /^print\s*\(/.test(trimmed)) && /;\s*$/.test(trimmed)) {
-      return {
-        kind: "output",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^cin\s*>>\s*$/.test(trimmed) || /^input\s*\(\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_input",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cin\s*>>/.test(trimmed) || /^input\s*\(/.test(trimmed)) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_input",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if ((/^cin\s*>>/.test(trimmed) || /^input\s*\(/.test(trimmed)) && /;\s*$/.test(trimmed)) {
-      return {
-        kind: "input",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^\{$/.test(trimmed)) {
-      return {
-        kind: "open_brace",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^\}$/.test(trimmed)) {
-      return {
-        kind: "close_brace",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^let\s+\w+\s*=\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_declaration",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^let\s+\w+\s*=/.test(trimmed) && !/;\s*$/.test(trimmed)) {
-      return {
-        kind: "unfinished_declaration",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^let\s+\w+\s*=.*;\s*$/.test(trimmed)) {
-      return {
-        kind: "declaration",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^\w+\s*=\s*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_assignment",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^\w+\s*=/.test(trimmed) && !/;\s*$/.test(trimmed) && !/==/.test(trimmed)) {
-      return {
-        kind: "unfinished_assignment",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^\w+\s*=.*;\s*$/.test(trimmed) && !/==/.test(trimmed)) {
-      return {
-        kind: "assignment",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (/^func\s+\w+\s*\([^)]*$/.test(trimmed)) {
-      return {
-        kind: "incomplete_function_header",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^func\s+\w+\s*\([^)]*\)\s*$/.test(trimmed)) {
-      return {
-        kind: "function_header_waiting_block",
-        complete: false,
-        explainable: true,
-      };
-    }
-
-    if (/^func\s+\w+\s*\([^)]*\)\s*\{$/.test(trimmed)) {
-      return {
-        kind: "function_header",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (trimmed.endsWith(";")) {
-      return {
-        kind: "generic_statement",
-        complete: true,
-        explainable: true,
-      };
-    }
-
-    if (trimmed.endsWith("{")) {
-      return {
-        kind: "generic_block_start",
-        complete: true,
-        explainable: true,
-      };
-    }
-
+  if (!trimmed) {
     return {
-      kind: "unfinished_unknown",
+      kind: "empty",
+      complete: false,
+      explainable: false,
+    };
+  }
+
+  if (/^\/\/.*$/.test(trimmed)) {
+    return {
+      kind: "comment",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^#include\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_include",
       complete: false,
       explainable: true,
     };
   }
 
-  function getLineHint(line) {
-    const trimmed = line.trim();
-    const state = classifyLineState(line);
-
-    switch (state.kind) {
-      case "incomplete_include":
-        return "You are starting an include line. Finish the library name and close it with >.";
-      case "incomplete_namespace":
-        return "You are starting a namespace line. End it with a semicolon.";
-      case "incomplete_main_signature":
-        return "You are starting the main function. Close the parentheses first.";
-      case "main_signature_waiting_block":
-        return "You finished the main function header. Add an opening curly brace to start its block.";
-      case "incomplete_if":
-        return "You are starting an if condition. Finish the condition and close the parenthesis.";
-      case "if_waiting_block":
-        return "Your if condition looks complete. Add an opening curly brace to start the block.";
-      case "else_waiting_block":
-        return "You wrote else. Add an opening curly brace to begin the alternative block.";
-      case "incomplete_while":
-        return "You are starting a while loop condition. Finish it and close the parenthesis.";
-      case "while_waiting_block":
-        return "Your while condition looks complete. Add an opening curly brace to begin the loop body.";
-      case "incomplete_for":
-        return "You are starting a for loop. Finish the loop header and close the parenthesis.";
-      case "for_waiting_block":
-        return "Your for loop header looks complete. Add an opening curly brace to begin the loop body.";
-      case "incomplete_return":
-        return "You are starting a return statement. Add a value or finish it with a semicolon.";
-      case "unfinished_return":
-        return "This return statement is not finished yet. End it with a semicolon.";
-      case "incomplete_output":
-        return "You are starting an output statement. Add what you want to print.";
-      case "unfinished_output":
-        return "This output line is not finished yet. Complete what should be printed and end the line properly.";
-      case "incomplete_input":
-        return "You are starting an input statement. Add the variable that should receive the value.";
-      case "unfinished_input":
-        return "This input line is not finished yet. Complete it and end the line properly.";
-      case "incomplete_declaration":
-        return "You started a variable declaration. Add the value that should be stored.";
-      case "unfinished_declaration":
-        return "This variable declaration is not finished yet. End it with a semicolon.";
-      case "incomplete_assignment":
-        return "You are starting an assignment. Add the value that should go on the right side.";
-      case "unfinished_assignment":
-        return "This assignment is not finished yet. End it with a semicolon.";
-      case "incomplete_function_header":
-        return "You are starting a function header. Finish the parameter list first.";
-      case "function_header_waiting_block":
-        return "The function header looks complete. Add an opening curly brace to start the function body.";
-      case "unfinished_unknown":
-        if (trimmed.endsWith("(")) {
-          return "This line looks unfinished. Close the parentheses and continue.";
-        }
-        return "Keep going — this line looks incomplete, so I am waiting before explaining it fully.";
-      default:
-        return "";
-    }
+  if (/^#include\s*<[^>]+>\s*$/.test(trimmed)) {
+    return {
+      kind: "include",
+      complete: true,
+      explainable: true,
+    };
   }
+
+  if (/^using\s+namespace\b/.test(trimmed) && !/;\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_namespace",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^using\s+namespace\s+\w+\s*;\s*$/.test(trimmed)) {
+    return {
+      kind: "namespace",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^int\s+main\s*\($/.test(trimmed)) {
+    return {
+      kind: "incomplete_main_signature",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^int\s+main\s*\(\)\s*$/.test(trimmed)) {
+    return {
+      kind: "main_signature_waiting_block",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^int\s+main\s*\(\)\s*\{$/.test(trimmed)) {
+    return {
+      kind: "main_start",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^else\s+if\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_else_if",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^else\s+if\s*\([^)]+\)\s*$/.test(trimmed)) {
+    return {
+      kind: "else_if_waiting_block",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^else\s+if\s*\([^)]+\)\s*\{$/.test(trimmed)) {
+    return {
+      kind: "else_if_start",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^if\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_if",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^if\s*\([^)]+\)\s*$/.test(trimmed)) {
+    return {
+      kind: "if_waiting_block",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^if\s*\([^)]+\)\s*\{$/.test(trimmed)) {
+    return {
+      kind: "if_start",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^else\s*$/.test(trimmed)) {
+    return {
+      kind: "else_waiting_block",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^else\s*\{$/.test(trimmed)) {
+    return {
+      kind: "else_start",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^while\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_while",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^while\s*\([^)]+\)\s*$/.test(trimmed)) {
+    return {
+      kind: "while_waiting_block",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^while\s*\([^)]+\)\s*\{$/.test(trimmed)) {
+    return {
+      kind: "while_start",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^for\s*\(.*$/.test(trimmed) && !/\)\s*\{?\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_for",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^for\s*\([^)]+\)\s*$/.test(trimmed)) {
+    return {
+      kind: "for_waiting_block",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^for\s*\([^)]+\)\s*\{$/.test(trimmed)) {
+    return {
+      kind: "for_start",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^return\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_return",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^return\b/.test(trimmed) && !/;\s*$/.test(trimmed)) {
+    return {
+      kind: "unfinished_return",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^return\b.*;\s*$/.test(trimmed)) {
+    return {
+      kind: "return",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^cout\s*<<\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_output",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^cout\b.*<<.*$/.test(trimmed) && !/;\s*$/.test(trimmed)) {
+    return {
+      kind: "unfinished_output",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^cout\b.*;\s*$/.test(trimmed)) {
+    return {
+      kind: "output",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^cin\s*>>\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_input",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^cin\b.*>>.*$/.test(trimmed) && !/;\s*$/.test(trimmed)) {
+    return {
+      kind: "unfinished_input",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^cin\b.*;\s*$/.test(trimmed)) {
+    return {
+      kind: "input",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string)\s+\w+\s*=\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_declaration",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string)\s+\w+\s*$/.test(trimmed)) {
+    return {
+      kind: "declaration_waiting_semicolon",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string)\s+\w+\s*=.*$/.test(trimmed) && !/;\s*$/.test(trimmed)) {
+    return {
+      kind: "unfinished_declaration",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string)\s+\w+\s*;\s*$/.test(trimmed)) {
+    return {
+      kind: "declaration",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string)\s+\w+\s*=.*;\s*$/.test(trimmed)) {
+    return {
+      kind: "initialized_declaration",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^\w+\s*=\s*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_assignment",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^\w+\s*=.*$/.test(trimmed) && !/;\s*$/.test(trimmed) && !/==/.test(trimmed)) {
+    return {
+      kind: "unfinished_assignment",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^\w+\s*=.*;\s*$/.test(trimmed) && !/==/.test(trimmed)) {
+    return {
+      kind: "assignment",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^\w+\+\+\s*;\s*$/.test(trimmed) || /^\+\+\w+\s*;\s*$/.test(trimmed)) {
+    return {
+      kind: "increment",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^\w+--\s*;\s*$/.test(trimmed) || /^--\w+\s*;\s*$/.test(trimmed)) {
+    return {
+      kind: "decrement",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string|void)\s+\w+\s*\([^)]*$/.test(trimmed)) {
+    return {
+      kind: "incomplete_function_header",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string|void)\s+\w+\s*\([^)]*\)\s*$/.test(trimmed)) {
+    return {
+      kind: "function_header_waiting_block",
+      complete: false,
+      explainable: true,
+    };
+  }
+
+  if (/^(int|float|double|char|bool|string|void)\s+\w+\s*\([^)]*\)\s*\{$/.test(trimmed)) {
+    return {
+      kind: "function_header",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^\{$/.test(trimmed)) {
+    return {
+      kind: "open_brace",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (/^\}$/.test(trimmed)) {
+    return {
+      kind: "close_brace",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (trimmed.endsWith(";")) {
+    return {
+      kind: "generic_statement",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  if (trimmed.endsWith("{")) {
+    return {
+      kind: "generic_block_start",
+      complete: true,
+      explainable: true,
+    };
+  }
+
+  return {
+    kind: "unfinished_unknown",
+    complete: false,
+    explainable: true,
+  };
+}
+
+function getLineHint(line) {
+  const trimmed = line.trim();
+  const state = classifyLineState(line);
+
+  switch (state.kind) {
+    case "incomplete_include":
+      return "You are starting an include line. Finish the library name and close it with >.";
+
+    case "incomplete_namespace":
+      return "You are starting a namespace line. End it with a semicolon.";
+
+    case "incomplete_main_signature":
+      return "You are starting the main function. Close the parentheses first.";
+
+    case "main_signature_waiting_block":
+      return "You finished the main function header. Add an opening curly brace to start its block.";
+
+    case "incomplete_if":
+      return "You are starting an if condition. Finish the condition and close the parenthesis.";
+
+    case "if_waiting_block":
+      return "Your if condition looks complete. Add an opening curly brace to start the block.";
+
+    case "incomplete_else_if":
+      return "You are starting an else-if condition. Finish the condition and close the parenthesis.";
+
+    case "else_if_waiting_block":
+      return "Your else-if condition looks complete. Add an opening curly brace to start the block.";
+
+    case "else_waiting_block":
+      return "You wrote else. Add an opening curly brace to begin the alternative block.";
+
+    case "incomplete_while":
+      return "You are starting a while loop condition. Finish it and close the parenthesis.";
+
+    case "while_waiting_block":
+      return "Your while condition looks complete. Add an opening curly brace to begin the loop body.";
+
+    case "incomplete_for":
+      return "You are starting a for loop. Finish the loop header and close the parenthesis.";
+
+    case "for_waiting_block":
+      return "Your for loop header looks complete. Add an opening curly brace to begin the loop body.";
+
+    case "incomplete_return":
+      return "You are starting a return statement. Add a value or finish it with a semicolon.";
+
+    case "unfinished_return":
+      return "This return statement is not finished yet. End it with a semicolon.";
+
+    case "incomplete_output":
+      return "You are starting an output statement. Add what you want to print after <<.";
+
+    case "unfinished_output":
+      return "This output line is not finished yet. Complete the expression and end it with a semicolon.";
+
+    case "incomplete_input":
+      return "You are starting an input statement. Add the variable that should receive the value after >>.";
+
+    case "unfinished_input":
+      return "This input line is not finished yet. Complete it and end it with a semicolon.";
+
+    case "incomplete_declaration":
+      return "You started a variable declaration with assignment. Add the value that should be stored.";
+
+    case "declaration_waiting_semicolon":
+      return "You declared a variable name, but the line still needs a semicolon.";
+
+    case "unfinished_declaration":
+      return "This variable declaration is not finished yet. End it with a semicolon.";
+
+    case "incomplete_assignment":
+      return "You are starting an assignment. Add the value that should go on the right side.";
+
+    case "unfinished_assignment":
+      return "This assignment is not finished yet. End it with a semicolon.";
+
+    case "incomplete_function_header":
+      return "You are starting a function header. Finish the parameter list first.";
+
+    case "function_header_waiting_block":
+      return "The function header looks complete. Add an opening curly brace to start the function body.";
+
+    case "unfinished_unknown":
+      if (trimmed.endsWith("(")) {
+        return "This line looks unfinished. You probably still need to complete what goes inside the parentheses.";
+      }
+
+      if (trimmed.endsWith("=")) {
+        return "This line looks unfinished. You still need to add a value on the right side.";
+      }
+
+      if (trimmed.endsWith("<<")) {
+        return "This line looks unfinished. Add what should be printed.";
+      }
+
+      if (trimmed.endsWith(">>")) {
+        return "This line looks unfinished. Add the variable that should receive input.";
+      }
+
+      return "This line looks incomplete. Keep typing to finish the statement.";
+
+    default:
+      return "";
+  }
+}
 
   function getLastNonEmptyLineInfo(source) {
     const lines = source.replace(/\r\n/g, "\n").split("\n");
@@ -1250,7 +1360,7 @@ async function runProgram() {
       renderLiveExplanationPreview(sourceInput.value);
     }, 120);
   });
-  
+
   });
 }  
   async function init() {
