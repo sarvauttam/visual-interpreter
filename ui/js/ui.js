@@ -62,6 +62,8 @@ async function loadInterpreterModule() {
 
   let explanationSteps = [];
   let currentStepIndex = -1;
+  let saveFeedbackTimer = null;
+  let historyPulseTimer = null;
   let playTimer = null;
   let liveExplainTimer = null;
   let hasRunAtLeastOnce = false;
@@ -197,6 +199,29 @@ function renderCurrentExplanationStep() {
     historyBtn.classList.toggle("nav-btn--disabled", !shouldBeActive);
   }
 
+  function pulseHistoryButton() {
+  if (!historyBtn) return;
+
+  historyBtn.classList.remove("nav-btn--pulse");
+  void historyBtn.offsetWidth;
+  historyBtn.classList.add("nav-btn--pulse");
+
+  if (historyPulseTimer) {
+    window.clearTimeout(historyPulseTimer);
+  }
+
+  historyPulseTimer = window.setTimeout(() => {
+    historyBtn.classList.remove("nav-btn--pulse");
+  }, 2200);
+}
+
+function activateHistoryUI() {
+  sessionHasInterpretation = true;
+  if (!historyBtn) return;
+  historyBtn.classList.remove("nav-btn--muted");
+  historyBtn.classList.remove("nav-btn--disabled");
+}
+
   function loadHistory() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -329,9 +354,28 @@ function renderHistoryList() {
         <button class="history-load-btn" type="button" data-load-history-id="${item.id}">
           Load
         </button>
+        <button class="history-delete-btn" type="button" data-delete-history-id="${item.id}">
+          Delete
+        </button>
       </div>
     </article>
   `).join("");
+}
+
+function deleteHistoryItem(itemId) {
+  const confirmed = window.confirm("Delete this interpretation?");
+  if (!confirmed) return;
+
+  try {
+    const items = loadHistory();
+    const filtered = items.filter((item) => item.id !== itemId);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+
+    renderHistoryList();
+    updateHistoryButtonState();
+  } catch (error) {
+    console.warn("Failed to delete history item:", error);
+  }
 }
 
 function openHistoryPanel() {
@@ -1259,6 +1303,28 @@ async function runProgram() {
   });
 }
 
+function setSaveButtonLabel(label) {
+  if (!saveBtn) return;
+  saveBtn.textContent = label;
+}
+
+function flashSavedState() {
+  if (!saveBtn) return;
+
+  if (saveFeedbackTimer) {
+    window.clearTimeout(saveFeedbackTimer);
+    saveFeedbackTimer = null;
+  }
+
+  saveBtn.classList.add("action-btn--saved");
+  setSaveButtonLabel("Saved!");
+
+  saveFeedbackTimer = window.setTimeout(() => {
+    saveBtn.classList.remove("action-btn--saved");
+    setSaveButtonLabel("Save Interpretation");
+  }, 1400);
+}
+
 function handleSaveInterpretation() {
   clearInlineError();
 
@@ -1275,8 +1341,9 @@ function handleSaveInterpretation() {
   saveHistoryItem(lastInterpretationSnapshot);
   renderHistoryList();
   updateHistoryButtonState();
+  flashSavedState();
+  pulseHistoryButton();
 }
-
   function clearWorkspace() {
     stopPlayback();
     clearInlineError();
@@ -1417,11 +1484,18 @@ rememberHistoryToggle?.addEventListener("change", (event) => {
   setRememberPreference(!!event.target.checked);
 });
 
-historyList?.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-load-history-id]");
-  if (!button) return;
-  loadHistoryItemIntoWorkspace(button.getAttribute("data-load-history-id"));
-});
+  historyList?.addEventListener("click", (event) => {
+    const loadButton = event.target.closest("[data-load-history-id]");
+    if (loadButton) {
+      loadHistoryItemIntoWorkspace(loadButton.getAttribute("data-load-history-id"));
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-delete-history-id]");
+    if (deleteButton) {
+      deleteHistoryItem(deleteButton.getAttribute("data-delete-history-id"));
+    }
+  });
 
   editorFontSize?.addEventListener("change", () => {
     editorStyleState.size = Number(editorFontSize.value) || 16;
@@ -1456,6 +1530,13 @@ historyList?.addEventListener("click", (event) => {
     liveExplainTimer = window.setTimeout(() => {
       renderLiveExplanationPreview(sourceInput.value);
     }, 120);
+
+    sourceInput?.addEventListener("input", () => {
+      if (saveBtn) {
+        saveBtn.classList.remove("action-btn--saved");
+        setSaveButtonLabel("Save Interpretation");
+      }
+    });
   });
 }
 
