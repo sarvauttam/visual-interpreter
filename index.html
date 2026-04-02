@@ -34,9 +34,31 @@
           <div>
             <h2 id="codePanelTitle">Code</h2>
             <p class="panel__subtext">Write or upload your code here.</p>
+            <p id="modeDescription" class="mode-description">
+              Execution Mode runs supported code with the interpreter.
+            </p>
           </div>
 
           <div class="editor-actions">
+            <div class="mode-switch" role="tablist" aria-label="Interpreter mode">
+              <button
+                id="executionModeBtn"
+                class="mode-switch__btn mode-switch__btn--active"
+                type="button"
+                aria-pressed="true"
+              >
+                Execution Mode
+              </button>
+              <button
+                id="readingModeBtn"
+                class="mode-switch__btn"
+                type="button"
+                aria-pressed="false"
+              >
+                Reading Mode
+              </button>
+            </div>
+
             <button id="runBtn" class="action-btn action-btn--primary" type="button">Run</button>
             <button id="clearBtn" class="action-btn" type="button">Clear</button>
           </div>
@@ -133,6 +155,16 @@
     <div>
       <h2 id="historyTitle">History</h2>
       <p class="panel__subtext">Saved interpretations on this device.</p>
+    </div>
+
+    <div class="history-toolbar">
+      <input
+        id="historySearchInput"
+        class="history-search-input"
+        type="text"
+        placeholder="Search history"
+        aria-label="Search history"
+      />
     </div>
 
     <div class="history-panel__actions">

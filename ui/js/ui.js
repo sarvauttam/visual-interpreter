@@ -35,6 +35,7 @@ async function loadInterpreterModule() {
   const howToUseBtn = $("howToUseBtn");
   const historyBtn = $("historyBtn");
   const accountBtn = $("accountBtn");
+  const historySearchInput = $("historySearchInput");
 
   const rememberHistoryToggle = $("rememberHistoryToggle");
   const historyPanel = $("historyPanel");
@@ -43,6 +44,10 @@ async function loadInterpreterModule() {
   const historyEmptyState = $("historyEmptyState");
   const clearHistoryBtn = $("clearHistoryBtn");
   const closeHistoryBtn = $("closeHistoryBtn");
+
+  const executionModeBtn = $("executionModeBtn");
+  const readingModeBtn = $("readingModeBtn");
+  const modeDescription = $("modeDescription");
 
   const editorFontSize = $("editorFontSize");
   const boldTextBtn = $("boldTextBtn");
@@ -57,9 +62,16 @@ async function loadInterpreterModule() {
   const STORAGE_KEY = "isee_code_history";
   const MAX_HISTORY_ITEMS = 12;
   const REMEMBER_HISTORY_KEY = "isee_code_remember_history";
+
   let lastInterpretationSnapshot = null;
   let sessionHasInterpretation = false;
   let activeHistoryItemId = null; 
+
+  let currentInterpreterMode = "run";
+
+  let historySearchQuery = "";
+  let editingHistoryItemId = null;
+  let editingHistoryDraft = "";
 
   let explanationSteps = [];
   let currentStepIndex = -1;
@@ -247,6 +259,116 @@ function activateHistoryUI() {
     }
   }
 
+function getNormalizedHistoryItems() {
+  const items = loadHistory();
+
+  return items.map((item) => ({
+    ...item,
+    updatedAt: item.updatedAt || item.date || new Date().toISOString(),
+    pinned: Boolean(item.pinned),
+  }));
+}
+
+function saveHistoryItems(items) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.warn("Failed to save history items:", error);
+  }
+}
+
+function updateHistoryItem(itemId, updates) {
+  const items = getNormalizedHistoryItems();
+  const updatedItems = items.map((item) =>
+    item.id === itemId
+      ? {
+          ...item,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        }
+      : item
+  );
+
+  saveHistoryItems(updatedItems);
+  renderHistoryList();
+  updateHistoryButtonState();
+}
+
+function getSortedHistoryItems(items) {
+  return [...items].sort((a, b) => {
+    if (a.pinned !== b.pinned) {
+      return a.pinned ? -1 : 1;
+    }
+
+    const aTime = new Date(a.updatedAt || a.date || 0).getTime();
+    const bTime = new Date(b.updatedAt || b.date || 0).getTime();
+
+    return bTime - aTime;
+  });
+}
+
+function filterHistoryItems(items, query) {
+  const value = String(query || "").trim().toLowerCase();
+  if (!value) return items;
+
+  return items.filter((item) => {
+    const title = String(item.title || "").toLowerCase();
+    const source = String(item.sourceCode || "").toLowerCase();
+    const output = String(item.output || "").toLowerCase();
+
+    return (
+      title.includes(value) ||
+      source.includes(value) ||
+      output.includes(value)
+    );
+  });
+}
+
+function togglePinHistoryItem(itemId) {
+  const items = getNormalizedHistoryItems();
+  const item = items.find((entry) => entry.id === itemId);
+  if (!item) return;
+
+  updateHistoryItem(itemId, {
+    pinned: !item.pinned,
+  });
+}
+
+function startHistoryTitleEdit(itemId, currentTitle) {
+  editingHistoryItemId = itemId;
+  editingHistoryDraft = currentTitle || "";
+  renderHistoryList();
+
+  window.requestAnimationFrame(() => {
+    const input = document.querySelector(`[data-history-title-input="${itemId}"]`);
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  });
+}
+
+function cancelHistoryTitleEdit() {
+  editingHistoryItemId = null;
+  editingHistoryDraft = "";
+  renderHistoryList();
+}
+
+function commitHistoryTitleEdit(itemId) {
+  const trimmed = editingHistoryDraft.trim();
+  if (!trimmed) {
+    cancelHistoryTitleEdit();
+    return;
+  }
+
+  updateHistoryItem(itemId, {
+    title: trimmed,
+  });
+
+  editingHistoryItemId = null;
+  editingHistoryDraft = "";
+}
+
   function getRememberPreference() {
   try {
     const raw = localStorage.getItem(REMEMBER_HISTORY_KEY);
@@ -285,16 +407,50 @@ function serializeExplanation(steps) {
 }
 
 function buildInterpretationRecord({ mode = "run", source, output, explanationSteps }) {
+  const now = new Date().toISOString();
+
   return {
     id: `history_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     title: buildHistoryTitle(source),
-    date: new Date().toISOString(),
+    date: now,
+    updatedAt: now,
     sourceCode: source,
     explanation: serializeExplanation(explanationSteps),
     output: output || "",
     languageGuess: inferLanguageFromSource(source),
     mode,
+    pinned: false,
   };
+}
+
+function setInterpreterMode(mode) {
+  currentInterpreterMode = mode === "explain" ? "explain" : "run";
+
+  const isRunMode = currentInterpreterMode === "run";
+
+  if (executionModeBtn) {
+    executionModeBtn.classList.toggle("mode-switch__btn--active", isRunMode);
+    executionModeBtn.setAttribute("aria-pressed", String(isRunMode));
+  }
+
+  if (readingModeBtn) {
+    readingModeBtn.classList.toggle("mode-switch__btn--active", !isRunMode);
+    readingModeBtn.setAttribute("aria-pressed", String(!isRunMode));
+  }
+
+  if (modeDescription) {
+    modeDescription.textContent = isRunMode
+      ? "Execution Mode runs supported code with the interpreter."
+      : "Reading Mode explains code from the source without running it.";
+  }
+
+  if (runBtn) {
+    runBtn.textContent = isRunMode ? "Run" : "Explain";
+  }
+}
+
+function getCurrentModeLabel() {
+  return currentInterpreterMode === "explain" ? "explain" : "run";
 }
 
 function truncateText(text, maxLength = 140) {
@@ -316,8 +472,8 @@ function getCodePreview(sourceCode) {
 }
 
 function formatModeLabel(mode) {
-  if (!mode) return "Run";
-  return mode.charAt(0).toUpperCase() + mode.slice(1);
+  if (mode === "explain") return "Reading";
+  return "Execution";
 }
 
 function activateHistoryUI() {
@@ -347,60 +503,106 @@ function deactivateHistoryUI() {
 function renderHistoryList() {
   if (!historyList || !historyEmptyState) return;
 
-  const items = loadHistory();
+  const normalizedItems = getNormalizedHistoryItems();
+  const sortedItems = getSortedHistoryItems(normalizedItems);
+  const filteredItems = filterHistoryItems(sortedItems, historySearchQuery);
 
-  if (!items.length) {
+  if (!filteredItems.length) {
     historyList.classList.add("hidden");
     historyEmptyState.classList.remove("hidden");
+    historyEmptyState.innerHTML = `
+      <div>
+        <h3>No matching interpretations</h3>
+        <p>${historySearchQuery ? "Try a different search term." : "Run code, then use “Save Interpretation” to keep it here."}</p>
+      </div>
+    `;
     return;
   }
 
   historyEmptyState.classList.add("hidden");
   historyList.classList.remove("hidden");
 
-historyList.innerHTML = items.map((item) => {
-  const isActive = item.id === activeHistoryItemId;
+  historyList.innerHTML = filteredItems.map((item) => {
+    const isActive = item.id === activeHistoryItemId;
+    const isEditing = item.id === editingHistoryItemId;
 
-  return `
-    <article class="history-card ${isActive ? "history-card--active" : ""}" data-history-id="${item.id}">
-      <div class="history-card__top">
-        <div>
-          <h3 class="history-card__title">${escapeHtml(item.title || "Untitled interpretation")}</h3>
-          <p class="history-card__meta">${escapeHtml(new Date(item.date).toLocaleString())}</p>
+    return `
+      <article class="history-card ${isActive ? "history-card--active" : ""} ${item.pinned ? "history-card--pinned" : ""}" data-history-id="${item.id}">
+        <div class="history-card__top">
+          <div class="history-card__title-wrap">
+            ${
+              isEditing
+                ? `
+                  <input
+                    class="history-title-input"
+                    type="text"
+                    value="${escapeHtml(editingHistoryDraft)}"
+                    data-history-title-input="${item.id}"
+                    aria-label="Edit interpretation title"
+                  />
+                `
+                : `
+                  <h3 class="history-card__title">${escapeHtml(item.title || "Untitled interpretation")}</h3>
+                `
+            }
+            <p class="history-card__meta">${escapeHtml(new Date(item.date).toLocaleString())}</p>
+          </div>
         </div>
-      </div>
 
-      <div class="history-card__badges">
-        <span class="history-badge">${escapeHtml(item.languageGuess || "Unknown")}</span>
-        <span class="history-badge">${escapeHtml(formatModeLabel(item.mode || "run"))}</span>
-      </div>
+        <div class="history-card__badges">
+          <span class="history-badge">${escapeHtml(item.languageGuess || "Unknown")}</span>
+          <span class="history-badge">${escapeHtml(formatModeLabel(item.mode || "run"))}</span>
+          ${item.pinned ? `<span class="history-badge history-badge--pinned">Pinned</span>` : ""}
+        </div>
 
-      <div class="history-card__section">
-        <p class="history-card__label">Code</p>
-        <pre class="history-card__preview">${escapeHtml(getCodePreview(item.sourceCode || ""))}</pre>
-      </div>
+        <div class="history-card__section">
+          <p class="history-card__label">Code</p>
+          <pre class="history-card__preview">${escapeHtml(getCodePreview(item.sourceCode || ""))}</pre>
+        </div>
 
-      <div class="history-card__section">
-        <p class="history-card__label">Output</p>
-        <div class="history-card__text-preview">${escapeHtml(getOutputPreview(item.output || ""))}</div>
-      </div>
+        <div class="history-card__section">
+          <p class="history-card__label">Output</p>
+          <div class="history-card__text-preview">${escapeHtml(getOutputPreview(item.output || ""))}</div>
+        </div>
 
-      <div class="history-card__section">
-        <p class="history-card__label">Explanation</p>
-        <div class="history-card__text-preview">${escapeHtml(getExplanationPreview(item.explanation || ""))}</div>
-      </div>
+        <div class="history-card__section">
+          <p class="history-card__label">Explanation</p>
+          <div class="history-card__text-preview">${escapeHtml(getExplanationPreview(item.explanation || ""))}</div>
+        </div>
 
-      <div class="history-card__actions">
-        <button class="history-load-btn" type="button" data-load-history-id="${item.id}">
-          Load
-        </button>
-        <button class="history-delete-btn" type="button" data-delete-history-id="${item.id}">
-          Delete
-        </button>
-      </div>
-    </article>
-  `;
-}).join("");
+        <div class="history-card__actions">
+          <button class="history-load-btn" type="button" data-load-history-id="${item.id}">
+            Load
+          </button>
+
+          ${
+            isEditing
+              ? `
+                <button class="history-secondary-btn" type="button" data-save-title-history-id="${item.id}">
+                  Save Title
+                </button>
+                <button class="history-secondary-btn" type="button" data-cancel-title-history-id="${item.id}">
+                  Cancel
+                </button>
+              `
+              : `
+                <button class="history-secondary-btn" type="button" data-rename-history-id="${item.id}">
+                  Rename
+                </button>
+              `
+          }
+
+          <button class="history-secondary-btn" type="button" data-pin-history-id="${item.id}">
+            ${item.pinned ? "Unpin" : "Pin"}
+          </button>
+
+          <button class="history-delete-btn" type="button" data-delete-history-id="${item.id}">
+            Delete
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
 }
 
 function deleteHistoryItem(itemId) {
@@ -439,9 +641,13 @@ function closeHistoryPanel() {
     historyPanel.classList.add("hidden");
     historyPanel.setAttribute("aria-hidden", "true");
   }
+
   if (historyBackdrop) {
     historyBackdrop.classList.add("hidden");
   }
+
+  editingHistoryItemId = null;
+  editingHistoryDraft = "";
 }
 
 function loadHistoryItemIntoWorkspace(itemId) {
@@ -482,6 +688,34 @@ function loadHistoryItemIntoWorkspace(itemId) {
   updateHistoryButtonState();
   renderHistoryList();
   closeHistoryPanel();
+}
+
+function runReadingMode(source) {
+  clearInlineError();
+
+  const sourceSteps = buildExplanationStepsFromSource(source);
+  explanationSteps = sourceSteps;
+  currentStepIndex = explanationSteps.length ? 0 : -1;
+
+  if (explanationSteps.length) {
+    renderCurrentExplanationStep();
+  } else {
+    renderEmptyExplanationState();
+  }
+
+  setOutput("Reading Mode: no execution was performed.");
+  hasRunAtLeastOnce = true;
+  sessionHasInterpretation = true;
+
+  activateHistoryUI();
+  updateHistoryButtonState();
+
+  lastInterpretationSnapshot = buildInterpretationRecord({
+    mode: "explain",
+    source,
+    output: "Reading Mode: no execution was performed.",
+    explanationSteps: sourceSteps,
+  });
 }
 
   function isCompleteThought(line) {
@@ -1316,6 +1550,11 @@ async function runProgram() {
     return;
   }
 
+  if (currentInterpreterMode === "explain") {
+    runReadingMode(source);
+    return;
+  }
+
   setOutput("Running...");
 
   const sourceSteps = buildExplanationStepsFromSource(source);
@@ -1543,17 +1782,72 @@ rememberHistoryToggle?.addEventListener("change", (event) => {
   setRememberPreference(!!event.target.checked);
 });
 
-  historyList?.addEventListener("click", (event) => {
-    const loadButton = event.target.closest("[data-load-history-id]");
-    if (loadButton) {
-      loadHistoryItemIntoWorkspace(loadButton.getAttribute("data-load-history-id"));
-      return;
-    }
+historyList?.addEventListener("click", (event) => {
+  const loadButton = event.target.closest("[data-load-history-id]");
+  if (loadButton) {
+    loadHistoryItemIntoWorkspace(loadButton.getAttribute("data-load-history-id"));
+    return;
+  }
 
-    const deleteButton = event.target.closest("[data-delete-history-id]");
-    if (deleteButton) {
-      deleteHistoryItem(deleteButton.getAttribute("data-delete-history-id"));
-    }
+  const renameButton = event.target.closest("[data-rename-history-id]");
+  if (renameButton) {
+    const itemId = renameButton.getAttribute("data-rename-history-id");
+    const items = getNormalizedHistoryItems();
+    const item = items.find((entry) => entry.id === itemId);
+    if (!item) return;
+
+    startHistoryTitleEdit(itemId, item.title);
+    return;
+  }
+
+  const saveTitleButton = event.target.closest("[data-save-title-history-id]");
+  if (saveTitleButton) {
+    commitHistoryTitleEdit(saveTitleButton.getAttribute("data-save-title-history-id"));
+    return;
+  }
+
+  const cancelTitleButton = event.target.closest("[data-cancel-title-history-id]");
+  if (cancelTitleButton) {
+    cancelHistoryTitleEdit();
+    return;
+  }
+
+  const pinButton = event.target.closest("[data-pin-history-id]");
+  if (pinButton) {
+    togglePinHistoryItem(pinButton.getAttribute("data-pin-history-id"));
+    return;
+  }
+
+  const deleteButton = event.target.closest("[data-delete-history-id]");
+  if (deleteButton) {
+    deleteHistoryItem(deleteButton.getAttribute("data-delete-history-id"));
+  }
+});
+
+historyList?.addEventListener("input", (event) => {
+  const input = event.target.closest("[data-history-title-input]");
+  if (!input) return;
+  editingHistoryDraft = input.value;
+});
+
+historyList?.addEventListener("keydown", (event) => {
+  const input = event.target.closest("[data-history-title-input]");
+  if (!input) return;
+
+  if (event.key === "Enter") {
+    event.preventDefault();
+    commitHistoryTitleEdit(input.getAttribute("data-history-title-input"));
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    cancelHistoryTitleEdit();
+  }
+});
+
+  historySearchInput?.addEventListener("input", (event) => {
+    historySearchQuery = event.target.value || "";
+    renderHistoryList();
   });
 
   editorFontSize?.addEventListener("change", () => {
@@ -1577,6 +1871,14 @@ rememberHistoryToggle?.addEventListener("change", (event) => {
     editorStyleState.underline = !editorStyleState.underline;
     applyEditorStyles();
     setToolbarActiveState(underlineTextBtn, editorStyleState.underline);
+  });
+
+  executionModeBtn?.addEventListener("click", () => {
+    setInterpreterMode("run");
+  });
+
+  readingModeBtn?.addEventListener("click", () => {
+    setInterpreterMode("explain");
   });
 
   sourceInput?.addEventListener("input", () => {
@@ -1613,7 +1915,8 @@ async function init() {
 
   updateHistoryButtonState();
   renderHistoryList();
-
+  setInterpreterMode("run");
+  
   wireEvents();
   await loadInterpreterModule();
 }
