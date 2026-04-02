@@ -894,3 +894,64 @@ button {
   font-size: 0.92rem;
   line-height: 1.5;
 }
+
+.editor-status-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.status-pill--good {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.status-pill--warn {
+  border-color: #d7b66f;
+  background: #fff7e6;
+  color: #8a6420;
+}
+
+.feedback-banner {
+  margin: 14px 0 18px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.feedback-banner--info {
+  border-color: var(--border);
+  background: #f7faf7;
+  color: var(--text);
+}
+
+.feedback-banner--success {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.feedback-banner--warn {
+  border-color: #d7b66f;
+  background: #fff7e6;
+  color: #8a6420;
+}
+
+.feedback-banner--error {
+  border-color: #d98f8f;
+  background: #fff1f1;
+  color: #9b2d2d;
+}
+
+.action-btn:disabled,
+.mode-switch__btn:disabled,
+.history-load-btn:disabled,
+.history-delete-btn:disabled,
+.history-secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

@@ -49,6 +49,11 @@ async function loadInterpreterModule() {
   const readingModeBtn = $("readingModeBtn");
   const modeDescription = $("modeDescription");
 
+  const languageStatus = $("languageStatus");
+  const modeFitStatus = $("modeFitStatus");
+
+  const feedbackBanner = $("feedbackBanner");
+
   const editorFontSize = $("editorFontSize");
   const boldTextBtn = $("boldTextBtn");
   const italicTextBtn = $("italicTextBtn");
@@ -62,6 +67,9 @@ async function loadInterpreterModule() {
   const STORAGE_KEY = "isee_code_history";
   const MAX_HISTORY_ITEMS = 12;
   const REMEMBER_HISTORY_KEY = "isee_code_remember_history";
+
+  let detectedLanguage = "Unknown";
+  let detectedFileName = "";
 
   let lastInterpretationSnapshot = null;
   let sessionHasInterpretation = false;
@@ -80,6 +88,10 @@ async function loadInterpreterModule() {
   let playTimer = null;
   let liveExplainTimer = null;
   let hasRunAtLeastOnce = false;
+
+  
+  let feedbackTimer = null;
+  let isBusy = false;
 
   let editorStyleState = {
     bold: false,
@@ -112,6 +124,38 @@ async function loadInterpreterModule() {
     if (!inlineErrorHost) return;
     inlineErrorHost.innerHTML = "";
   }
+
+  function showFeedback(message, type = "info", options = {}) {
+  if (!feedbackBanner) return;
+
+  const { persist = false } = options;
+
+  if (feedbackTimer) {
+    window.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
+  }
+
+  feedbackBanner.textContent = message;
+  feedbackBanner.className = `feedback-banner feedback-banner--${type}`;
+
+  if (!persist) {
+    feedbackTimer = window.setTimeout(() => {
+      clearFeedback();
+    }, 2600);
+  }
+}
+
+function clearFeedback() {
+  if (!feedbackBanner) return;
+
+  if (feedbackTimer) {
+    window.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
+  }
+
+  feedbackBanner.textContent = "";
+  feedbackBanner.className = "feedback-banner hidden";
+}
 
   function setOutput(text) {
     if (!outputPanel) return;
@@ -177,6 +221,39 @@ function renderCurrentExplanationStep() {
         .join("")}
     </div>
   `;
+}
+
+function setBusyState(nextBusy, message = "") {
+  isBusy = !!nextBusy;
+
+  if (runBtn) {
+    runBtn.disabled = isBusy;
+    runBtn.textContent = isBusy
+      ? currentInterpreterMode === "explain"
+        ? "Explaining..."
+        : "Running..."
+      : currentInterpreterMode === "explain"
+        ? "Explain"
+        : "Run";
+  }
+
+  if (clearBtn) {
+    clearBtn.disabled = isBusy;
+  }
+
+  if (saveBtn) {
+    saveBtn.disabled = isBusy;
+  }
+
+  if (fileInput) {
+    fileInput.disabled = isBusy;
+  }
+
+  if (isBusy && message) {
+    showFeedback(message, "info", { persist: true });
+  } else if (!isBusy) {
+    clearFeedback();
+  }
 }
 
   function stopPlayback() {
@@ -329,9 +406,16 @@ function togglePinHistoryItem(itemId) {
   const item = items.find((entry) => entry.id === itemId);
   if (!item) return;
 
+  const nextPinned = !item.pinned;
+
   updateHistoryItem(itemId, {
-    pinned: !item.pinned,
+    pinned: nextPinned,
   });
+
+  showFeedback(
+    nextPinned ? "Interpretation pinned." : "Interpretation unpinned.",
+    "info"
+  );
 }
 
 function startHistoryTitleEdit(itemId, currentTitle) {
@@ -417,7 +501,9 @@ function buildInterpretationRecord({ mode = "run", source, output, explanationSt
     sourceCode: source,
     explanation: serializeExplanation(explanationSteps),
     output: output || "",
-    languageGuess: inferLanguageFromSource(source),
+    languageGuess: detectedLanguage && detectedLanguage !== "Unknown"
+      ? detectedLanguage
+      : inferLanguageFromSource(source),
     mode,
     pinned: false,
   };
@@ -439,12 +525,16 @@ function setInterpreterMode(mode) {
   }
 
   if (modeDescription) {
-    modeDescription.textContent = isRunMode
-      ? "Execution Mode runs supported code with the interpreter."
-      : "Reading Mode explains code from the source without running it.";
+    if (isRunMode) {
+      modeDescription.textContent = isExecutionFriendlyLanguage(detectedLanguage)
+        ? "Execution Mode runs supported code with the interpreter."
+        : "Execution Mode runs supported code only. Reading Mode is safer for unsupported languages.";
+    } else {
+      modeDescription.textContent = "Reading Mode explains code from the source without running it.";
+    }
   }
 
-  if (runBtn) {
+  if (runBtn && !isBusy) {
     runBtn.textContent = isRunMode ? "Run" : "Explain";
   }
 }
@@ -609,20 +699,25 @@ function deleteHistoryItem(itemId) {
   const confirmed = window.confirm("Delete this interpretation?");
   if (!confirmed) return;
 
-  try {
-    const items = loadHistory();
-    const filtered = items.filter((item) => item.id !== itemId);
+try {
+  const items = loadHistory();
+  const filtered = items.filter((item) => item.id !== itemId);
 
-    if (activeHistoryItemId === itemId) {
-      activeHistoryItemId = null;
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    renderHistoryList();
-    updateHistoryButtonState();
-  } catch (error) {
-    console.warn("Failed to delete history item:", error);
+  if (activeHistoryItemId === itemId) {
+    activeHistoryItemId = null;
   }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  renderHistoryList();
+  updateHistoryButtonState();
+
+  if (filtered.length === 0) {
+    showFeedback("History is now empty.", "info");
+  } else {
+    showFeedback("Interpretation deleted.", "info");
+  }
+} catch (error) {
+  console.warn("Failed to delete history item:", error);
 }
 
 function openHistoryPanel() {
@@ -687,6 +782,7 @@ function loadHistoryItemIntoWorkspace(itemId) {
   activateHistoryUI();
   updateHistoryButtonState();
   renderHistoryList();
+  showFeedback("Interpretation loaded from history.", "info");
   closeHistoryPanel();
 }
 
@@ -716,6 +812,9 @@ function runReadingMode(source) {
     output: "Reading Mode: no execution was performed.",
     explanationSteps: sourceSteps,
   });
+
+  setBusyState(false);
+  showFeedback("Reading Mode explanation generated.", "success");
 }
 
   function isCompleteThought(line) {
@@ -905,6 +1004,7 @@ function runReadingMode(source) {
         explainable: true,
       };
     }
+  }
 
     if (/^return\b.*;\s*$/.test(trimmed)) {
       return {
@@ -1133,6 +1233,168 @@ function runReadingMode(source) {
         return "";
     }
   }
+
+  function detectLanguageFromFileName(fileName) {
+  const value = String(fileName || "").toLowerCase().trim();
+
+  if (value.endsWith(".cpp") || value.endsWith(".cc") || value.endsWith(".cxx") || value.endsWith(".hpp") || value.endsWith(".h")) {
+    return "C++";
+  }
+
+  if (value.endsWith(".c")) {
+    return "C";
+  }
+
+  if (value.endsWith(".py")) {
+    return "Python";
+  }
+
+  if (value.endsWith(".js")) {
+    return "JavaScript";
+  }
+
+  if (value.endsWith(".ts")) {
+    return "TypeScript";
+  }
+
+  if (value.endsWith(".java")) {
+    return "Java";
+  }
+
+  if (value.endsWith(".cs")) {
+    return "C#";
+  }
+
+  if (value.endsWith(".go")) {
+    return "Go";
+  }
+
+  if (value.endsWith(".rs")) {
+    return "Rust";
+  }
+
+  if (value.endsWith(".php")) {
+    return "PHP";
+  }
+
+  if (value.endsWith(".rb")) {
+    return "Ruby";
+  }
+
+  if (value.endsWith(".swift")) {
+    return "Swift";
+  }
+
+  if (value.endsWith(".kt")) {
+    return "Kotlin";
+  }
+
+  return "Unknown";
+}
+
+function detectLanguageFromSource(source) {
+  const text = String(source || "");
+
+  if (/#include\s*</.test(text) || /\busing\s+namespace\s+std\b/.test(text) || /\bstd::/.test(text)) {
+    return "C++";
+  }
+
+  if (/^\s*def\s+\w+\s*\(/m.test(text) || /^\s*import\s+\w+/m.test(text) || /^\s*print\s*\(/m.test(text)) {
+    return "Python";
+  }
+
+  if (/\bconsole\.log\s*\(/.test(text) || /\bfunction\s+\w+\s*\(/.test(text) || /\b(let|const|var)\s+\w+/.test(text)) {
+    return "JavaScript";
+  }
+
+  if (/\bpublic\s+class\b/.test(text) || /\bSystem\.out\.println\s*\(/.test(text)) {
+    return "Java";
+  }
+
+  if (/\bpackage\s+main\b/.test(text) || /\bfunc\s+main\s*\(/.test(text)) {
+    return "Go";
+  }
+
+  if (/\bfn\s+main\s*\(/.test(text) || /\blet\s+mut\s+/.test(text)) {
+    return "Rust";
+  }
+
+  if (/\busing\s+System\b/.test(text) || /\bConsole\.WriteLine\s*\(/.test(text)) {
+    return "C#";
+  }
+
+  if (/<\?php/.test(text)) {
+    return "PHP";
+  }
+
+  if (/^\s*puts\s+/.test(text) || /^\s*def\s+\w+\s*(\(|$)/m.test(text) && /\bend\b/m.test(text)) {
+    return "Ruby";
+  }
+
+  if (/^\s*func\s+\w+\s*\(/m.test(text) && /\bimport\s+Foundation\b/.test(text)) {
+    return "Swift";
+  }
+
+  return "Unknown";
+}
+
+  function detectLikelyLanguage({ fileName = "", source = "" }) {
+    const byFile = detectLanguageFromFileName(fileName);
+    if (byFile !== "Unknown") return byFile;
+
+    const bySource = detectLanguageFromSource(source);
+    return bySource;
+  }
+
+  function isExecutionFriendlyLanguage(language) {
+  return language === "C++";
+}
+
+function updateLanguageUI() {
+  if (languageStatus) {
+    languageStatus.textContent = `Language: ${detectedLanguage || "Unknown"}`;
+    languageStatus.classList.toggle("status-pill--good", detectedLanguage === "C++");
+    languageStatus.classList.toggle("status-pill--warn", detectedLanguage !== "Unknown" && detectedLanguage !== "C++");
+  }
+
+  const executionFriendly = isExecutionFriendlyLanguage(detectedLanguage);
+
+  if (modeFitStatus) {
+    if (detectedLanguage === "Unknown") {
+      modeFitStatus.textContent = "Mode fit: Not checked";
+      modeFitStatus.classList.remove("status-pill--good", "status-pill--warn");
+    } else if (executionFriendly) {
+      modeFitStatus.textContent = "Mode fit: Execution Mode recommended";
+      modeFitStatus.classList.add("status-pill--good");
+      modeFitStatus.classList.remove("status-pill--warn");
+    } else {
+      modeFitStatus.textContent = "Mode fit: Reading Mode recommended";
+      modeFitStatus.classList.add("status-pill--warn");
+      modeFitStatus.classList.remove("status-pill--good");
+    }
+  }
+}
+
+function maybeShowModeGuidance() {
+  if (currentInterpreterMode !== "run") return;
+  if (!detectedLanguage || detectedLanguage === "Unknown") return;
+  if (isExecutionFriendlyLanguage(detectedLanguage)) return;
+
+  showInlineError(
+    `${detectedLanguage} is unlikely to run in Execution Mode. Try Reading Mode for explanation without execution.`
+  );
+}
+
+function refreshDetectedLanguage() {
+  const source = sourceInput ? sourceInput.value : "";
+  detectedLanguage = detectLikelyLanguage({
+    fileName: detectedFileName,
+    source,
+  });
+
+  updateLanguageUI();
+  setInterpreterMode(currentInterpreterMode);
+}
 
   function getLastNonEmptyLineInfo(source) {
     const lines = source.replace(/\r\n/g, "\n").split("\n");
@@ -1536,6 +1798,8 @@ async function tryRunWithWasm(source) {
 async function runProgram() {
   console.log("Run button clicked.");
 
+  if (isBusy) return;
+
   clearInlineError();
 
   const source = sourceInput ? sourceInput.value : "";
@@ -1550,49 +1814,68 @@ async function runProgram() {
     return;
   }
 
-  if (currentInterpreterMode === "explain") {
-    runReadingMode(source);
-    return;
+  setBusyState(
+    true,
+    currentInterpreterMode === "explain"
+      ? "Generating explanation from source..."
+      : "Running code through the interpreter..."
+  );
+
+  try {
+    if (currentInterpreterMode === "explain") {
+      runReadingMode(source);
+      return;
+    }
+
+    setOutput("Running...");
+
+    const sourceSteps = buildExplanationStepsFromSource(source);
+    explanationSteps = sourceSteps;
+    currentStepIndex = explanationSteps.length ? 0 : -1;
+    renderCurrentExplanationStep();
+
+    const result = await tryRunWithWasm(source);
+    console.log("WASM result:", result);
+
+    if (!result.ok) {
+      const friendlyError = result.error_text || "The program could not run.";
+      showInlineError(friendlyError);
+      setOutput("Run stopped because of an error.");
+      setBusyState(false);
+      showFeedback(friendlyError, "error");
+      return;
+    }
+
+    setOutput(result.stdout_text || "Program finished successfully.");
+    hasRunAtLeastOnce = true;
+
+    const events = parseTraceJsonl(result.trace_jsonl);
+    const traceMap = buildExplanationStepsFromTrace(events, source);
+    const mergedSteps = mergeExplanationSteps(sourceSteps, traceMap);
+
+    explanationSteps = mergedSteps;
+    currentStepIndex = explanationSteps.length ? 0 : -1;
+    renderCurrentExplanationStep();
+
+    activateHistoryUI();
+    updateHistoryButtonState();
+
+    lastInterpretationSnapshot = buildInterpretationRecord({
+      mode: "run",
+      source,
+      output: result.stdout_text || "",
+      explanationSteps: mergedSteps,
+    });
+
+    setBusyState(false);
+    showFeedback("Execution finished successfully.", "success");
+  } catch (error) {
+    console.error(error);
+    showInlineError("Something unexpected went wrong.");
+    showFeedback("Something unexpected went wrong.", "error");
+    setOutput("Run stopped because of an unexpected error.");
+    setBusyState(false);
   }
-
-  setOutput("Running...");
-
-  const sourceSteps = buildExplanationStepsFromSource(source);
-  explanationSteps = sourceSteps;
-  currentStepIndex = explanationSteps.length ? 0 : -1;
-  renderCurrentExplanationStep();
-
-  const result = await tryRunWithWasm(source);
-  console.log("WASM result:", result);
-
-  if (!result.ok) {
-    const friendlyError = result.error_text || "The program could not run.";
-    showInlineError(friendlyError);
-    setOutput("Run stopped because of an error.");
-
-    return;
-  }
-
-  setOutput(result.stdout_text || "Program finished successfully.");
-  hasRunAtLeastOnce = true;
-
-  const events = parseTraceJsonl(result.trace_jsonl);
-  const traceMap = buildExplanationStepsFromTrace(events, source);
-  const mergedSteps = mergeExplanationSteps(sourceSteps, traceMap);
-
-  explanationSteps = mergedSteps;
-  currentStepIndex = explanationSteps.length ? 0 : -1;
-  renderCurrentExplanationStep();
-
-  activateHistoryUI();
-  updateHistoryButtonState();
-
-  lastInterpretationSnapshot = buildInterpretationRecord({
-    mode: "run",
-    source,
-    output: result.stdout_text || "",
-    explanationSteps: mergedSteps,
-  });
 }
 
 function setSaveButtonLabel(label) {
@@ -1622,11 +1905,13 @@ function handleSaveInterpretation() {
 
   if (!lastInterpretationSnapshot) {
     showInlineError("Run an interpretation first, then save it.");
+    showFeedback("Run or explain something first, then save it.", "warn");
     return;
   }
 
   if (!getRememberPreference()) {
     showInlineError("“Remember on this device” is off, so this interpretation was not saved.");
+    showFeedback("Saving is off because “Remember on this device” is disabled.", "warn");
     return;
   }
 
@@ -1635,12 +1920,20 @@ function handleSaveInterpretation() {
   updateHistoryButtonState();
   flashSavedState();
   pulseHistoryButton();
+  showFeedback("Interpretation saved to local history.", "success");
 }
+
   function clearWorkspace() {
     stopPlayback();
     clearInlineError();
     lastInterpretationSnapshot = null;
     activeHistoryItemId = null;
+    sessionHasInterpretation = false;
+    updateHistoryButtonState();
+
+    detectedLanguage = "Unknown";
+    detectedFileName = "";
+    updateLanguageUI();
 
     if (liveExplainTimer) {
       window.clearTimeout(liveExplainTimer);
@@ -1669,6 +1962,8 @@ function handleSaveInterpretation() {
       saveBtn.classList.remove("action-btn--saved");
       saveBtn.textContent = "Save Interpretation";
     }
+
+    showFeedback("Workspace cleared.", "info");
   }
 
   async function handleFileUpload(event) {
@@ -1677,6 +1972,8 @@ function handleSaveInterpretation() {
     const file = event?.target?.files?.[0];
     if (!file) return;
 
+    detectedFileName = file?.name || "";
+
     try {
       const text = await file.text();
 
@@ -1684,8 +1981,10 @@ function handleSaveInterpretation() {
         sourceInput.value = text;
       }
 
+      refreshDetectedLanguage();
+
       if (fileStatus) {
-        fileStatus.textContent = file.name;
+        fileStatus.textContent = `Loaded: ${file.name}`;
       }
 
       const lowerName = file.name.toLowerCase();
@@ -1693,10 +1992,21 @@ function handleSaveInterpretation() {
         lowerName.endsWith(".cpp") ||
         lowerName.endsWith(".cc") ||
         lowerName.endsWith(".cxx") ||
-        lowerName.endsWith(".txt") ||
         lowerName.endsWith(".c") ||
         lowerName.endsWith(".h") ||
-        lowerName.endsWith(".hpp");
+        lowerName.endsWith(".hpp") ||
+        lowerName.endsWith(".py") ||
+        lowerName.endsWith(".js") ||
+        lowerName.endsWith(".ts") ||
+        lowerName.endsWith(".java") ||
+        lowerName.endsWith(".cs") ||
+        lowerName.endsWith(".go") ||
+        lowerName.endsWith(".rs") ||
+        lowerName.endsWith(".php") ||
+        lowerName.endsWith(".rb") ||
+        lowerName.endsWith(".swift") ||
+        lowerName.endsWith(".kt") ||
+        lowerName.endsWith(".txt");
 
       if (!knownCodeExtension) {
         showInlineError(
@@ -1750,6 +2060,7 @@ function handleSaveInterpretation() {
   }
 
 function wireEvents() {
+
   fileInput?.addEventListener("change", handleFileUpload);
   runBtn?.addEventListener("click", runProgram);
   clearBtn?.addEventListener("click", clearWorkspace);
@@ -1762,6 +2073,12 @@ function wireEvents() {
     if (!sessionHasInterpretation && saved.length === 0) return;
     openHistoryPanel();
   });
+
+  document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && historyPanel && !historyPanel.classList.contains("hidden")) {
+    closeHistoryPanel();
+  }
+});
 
   closeHistoryBtn?.addEventListener("click", closeHistoryPanel);
 
@@ -1782,12 +2099,12 @@ rememberHistoryToggle?.addEventListener("change", (event) => {
   setRememberPreference(!!event.target.checked);
 });
 
-historyList?.addEventListener("click", (event) => {
-  const loadButton = event.target.closest("[data-load-history-id]");
-  if (loadButton) {
-    loadHistoryItemIntoWorkspace(loadButton.getAttribute("data-load-history-id"));
-    return;
-  }
+  historyList?.addEventListener("click", (event) => {
+    const loadButton = event.target.closest("[data-load-history-id]");
+    if (loadButton) {
+      loadHistoryItemIntoWorkspace(loadButton.getAttribute("data-load-history-id"));
+      return;
+    }
 
   const renameButton = event.target.closest("[data-rename-history-id]");
   if (renameButton) {
@@ -1881,25 +2198,25 @@ historyList?.addEventListener("keydown", (event) => {
     setInterpreterMode("explain");
   });
 
-  sourceInput?.addEventListener("input", () => {
-    clearInlineError();
+sourceInput?.addEventListener("input", () => {
+  clearInlineError();
 
-    if (liveExplainTimer) {
-      window.clearTimeout(liveExplainTimer);
-    }
+  if (liveExplainTimer) {
+    window.clearTimeout(liveExplainTimer);
+  }
 
-    liveExplainTimer = window.setTimeout(() => {
-      renderLiveExplanationPreview(sourceInput.value);
-    }, 120);
+  liveExplainTimer = window.setTimeout(() => {
+    renderLiveExplanationPreview(sourceInput.value);
+  }, 120);
 
-    sourceInput?.addEventListener("input", () => {
-      if (saveBtn) {
-        saveBtn.classList.remove("action-btn--saved");
-        setSaveButtonLabel("Save Interpretation");
-      }
-    });
-  });
-}
+  if (saveBtn) {
+    saveBtn.classList.remove("action-btn--saved");
+    setSaveButtonLabel("Save Interpretation");
+  }
+
+  refreshDetectedLanguage();
+});
+
 
 async function init() {
   renderEmptyExplanationState();
@@ -1916,10 +2233,11 @@ async function init() {
   updateHistoryButtonState();
   renderHistoryList();
   setInterpreterMode("run");
+  updateLanguageUI();
   
   wireEvents();
   await loadInterpreterModule();
 }
 
   init();
-})();
+}}());

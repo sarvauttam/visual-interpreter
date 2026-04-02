@@ -28,6 +28,8 @@
       </nav>
     </header>
 
+    <div id="feedbackBanner" class="feedback-banner hidden" aria-live="polite"></div>
+
     <main class="main-layout">
       <section class="panel panel--editor" aria-labelledby="codePanelTitle">
         <div class="panel__header">
@@ -80,7 +82,11 @@
           <button id="italicTextBtn" class="toolbar-btn" type="button">Italic</button>
           <button id="underlineTextBtn" class="toolbar-btn" type="button">Underline</button>
 
-          <div class="status-pill" id="fileStatus">No file loaded</div>
+          <div class="editor-status-group">
+            <div class="status-pill" id="fileStatus">No file loaded</div>
+            <div class="status-pill" id="languageStatus">Language: Unknown</div>
+            <div class="status-pill" id="modeFitStatus">Mode fit: Not checked</div>
+          </div>
         </div>
 
         <div class="editor-wrap">
