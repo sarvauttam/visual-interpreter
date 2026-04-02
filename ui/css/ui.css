@@ -737,3 +737,71 @@ button {
   font-weight: 700;
   cursor: pointer;
 }
+
+.history-card--active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(95, 141, 78, 0.14);
+}
+
+.history-card__section {
+  margin-top: 12px;
+}
+
+.history-card__label {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.history-card__text-preview {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f7faf7;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.93rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.history-card__preview {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f7faf7;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.history-card__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.history-load-btn,
+.history-delete-btn {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-load-btn:hover,
+.history-delete-btn:hover {
+  transform: translateY(-1px);
+}

@@ -59,6 +59,7 @@ async function loadInterpreterModule() {
   const REMEMBER_HISTORY_KEY = "isee_code_remember_history";
   let lastInterpretationSnapshot = null;
   let sessionHasInterpretation = false;
+  let activeHistoryItemId = null; 
 
   let explanationSteps = [];
   let currentStepIndex = -1;
@@ -296,6 +297,29 @@ function buildInterpretationRecord({ mode = "run", source, output, explanationSt
   };
 }
 
+function truncateText(text, maxLength = 140) {
+  const value = String(text || "").trim();
+  if (!value) return "—";
+  return value.length > maxLength ? `${value.slice(0, maxLength).trimEnd()}…` : value;
+}
+
+function getOutputPreview(output) {
+  return truncateText(output || "No output saved.", 120);
+}
+
+function getExplanationPreview(explanation) {
+  return truncateText(explanation || "No explanation saved.", 160);
+}
+
+function getCodePreview(sourceCode) {
+  return truncateText(sourceCode || "", 180);
+}
+
+function formatModeLabel(mode) {
+  if (!mode) return "Run";
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
+}
+
 function activateHistoryUI() {
   sessionHasInterpretation = true;
   if (historyBtn) {
@@ -334,8 +358,11 @@ function renderHistoryList() {
   historyEmptyState.classList.add("hidden");
   historyList.classList.remove("hidden");
 
-  historyList.innerHTML = items.map((item) => `
-    <article class="history-card" data-history-id="${item.id}">
+historyList.innerHTML = items.map((item) => {
+  const isActive = item.id === activeHistoryItemId;
+
+  return `
+    <article class="history-card ${isActive ? "history-card--active" : ""}" data-history-id="${item.id}">
       <div class="history-card__top">
         <div>
           <h3 class="history-card__title">${escapeHtml(item.title || "Untitled interpretation")}</h3>
@@ -345,10 +372,23 @@ function renderHistoryList() {
 
       <div class="history-card__badges">
         <span class="history-badge">${escapeHtml(item.languageGuess || "Unknown")}</span>
-        <span class="history-badge">${escapeHtml(item.mode || "run")}</span>
+        <span class="history-badge">${escapeHtml(formatModeLabel(item.mode || "run"))}</span>
       </div>
 
-      <pre class="history-card__preview">${escapeHtml((item.sourceCode || "").slice(0, 240))}</pre>
+      <div class="history-card__section">
+        <p class="history-card__label">Code</p>
+        <pre class="history-card__preview">${escapeHtml(getCodePreview(item.sourceCode || ""))}</pre>
+      </div>
+
+      <div class="history-card__section">
+        <p class="history-card__label">Output</p>
+        <div class="history-card__text-preview">${escapeHtml(getOutputPreview(item.output || ""))}</div>
+      </div>
+
+      <div class="history-card__section">
+        <p class="history-card__label">Explanation</p>
+        <div class="history-card__text-preview">${escapeHtml(getExplanationPreview(item.explanation || ""))}</div>
+      </div>
 
       <div class="history-card__actions">
         <button class="history-load-btn" type="button" data-load-history-id="${item.id}">
@@ -359,7 +399,8 @@ function renderHistoryList() {
         </button>
       </div>
     </article>
-  `).join("");
+  `;
+}).join("");
 }
 
 function deleteHistoryItem(itemId) {
@@ -369,8 +410,12 @@ function deleteHistoryItem(itemId) {
   try {
     const items = loadHistory();
     const filtered = items.filter((item) => item.id !== itemId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
 
+    if (activeHistoryItemId === itemId) {
+      activeHistoryItemId = null;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
     renderHistoryList();
     updateHistoryButtonState();
   } catch (error) {
@@ -404,6 +449,8 @@ function loadHistoryItemIntoWorkspace(itemId) {
   const item = items.find((entry) => entry.id === itemId);
   if (!item) return;
 
+  activeHistoryItemId = item.id;
+
   if (sourceInput) {
     sourceInput.value = item.sourceCode || "";
   }
@@ -417,17 +464,23 @@ function loadHistoryItemIntoWorkspace(itemId) {
     }));
   }
 
+  currentStepIndex = explanationSteps.length ? 0 : -1;
+
   setOutput(item.output || "Ready.");
 
-  if (explanationsPanel) {
-    explanationsPanel.innerHTML = `
-      <div class="explanation-block">
-        <p class="explanation-text">${escapeHtml(item.explanation || "No explanation saved.")}</p>
-      </div>
-    `;
+  if (explanationSteps.length) {
+    renderCurrentExplanationStep();
+  } else {
+    renderEmptyExplanationState();
   }
 
+  lastInterpretationSnapshot = {
+    ...item,
+  };
+
   activateHistoryUI();
+  updateHistoryButtonState();
+  renderHistoryList();
   closeHistoryPanel();
 }
 
@@ -1348,6 +1401,7 @@ function handleSaveInterpretation() {
     stopPlayback();
     clearInlineError();
     lastInterpretationSnapshot = null;
+    activeHistoryItemId = null;
 
     if (liveExplainTimer) {
       window.clearTimeout(liveExplainTimer);
@@ -1371,6 +1425,11 @@ function handleSaveInterpretation() {
     hasRunAtLeastOnce = false;
     renderEmptyExplanationState();
     setOutput("Ready.");
+
+    if (saveBtn) {
+      saveBtn.classList.remove("action-btn--saved");
+      saveBtn.textContent = "Save Interpretation";
+    }
   }
 
   async function handleFileUpload(event) {
