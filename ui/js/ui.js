@@ -29,6 +29,7 @@ async function loadInterpreterModule() {
   return null;
 }
 
+
 (function () {
   const $ = (id) => document.getElementById(id);
 
@@ -70,6 +71,19 @@ async function loadInterpreterModule() {
   const outputPanel = $("outputPanel");
   const inlineErrorHost = $("inlineErrorHost");
 
+  window.ISeeCodeFeedback.elements.feedbackBanner = feedbackBanner;
+  window.ISeeCodeFeedback.elements.outputPanel = outputPanel;
+  window.ISeeCodeFeedback.elements.inlineErrorHost = inlineErrorHost;
+
+  const {
+    escapeHtml,
+    showInlineError,
+    clearInlineError,
+    showFeedback,
+    clearFeedback,
+    setOutput,
+  } = window.ISeeCodeFeedback;
+
   const STORAGE_KEY = "isee_code_history";
   const MAX_HISTORY_ITEMS = 12;
   const REMEMBER_HISTORY_KEY = "isee_code_remember_history";
@@ -108,67 +122,67 @@ async function loadInterpreterModule() {
     size: 16,
   };
 
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
+  // function escapeHtml(value) {
+  //   return String(value)
+  //     .replace(/&/g, "&amp;")
+  //     .replace(/</g, "&lt;")
+  //     .replace(/>/g, "&gt;")
+  //     .replace(/"/g, "&quot;")
+  //     .replace(/'/g, "&#039;");
+  // }
 
-  function showInlineError(message) {
-    if (!inlineErrorHost) return;
+  // function showInlineError(message) {
+  //   if (!inlineErrorHost) return;
 
-    inlineErrorHost.innerHTML = `
-      <div class="inline-error">
-        <span>❌</span>
-        <span>${escapeHtml(message)}</span>
-      </div>
-    `;
-  }
+  //   inlineErrorHost.innerHTML = `
+  //     <div class="inline-error">
+  //       <span>❌</span>
+  //       <span>${escapeHtml(message)}</span>
+  //     </div>
+  //   `;
+  // }
 
-  function clearInlineError() {
-    if (!inlineErrorHost) return;
-    inlineErrorHost.innerHTML = "";
-  }
+  // function clearInlineError() {
+  //   if (!inlineErrorHost) return;
+  //   inlineErrorHost.innerHTML = "";
+  // }
 
-  function showFeedback(message, type = "info", options = {}) {
-  if (!feedbackBanner) return;
+//   function showFeedback(message, type = "info", options = {}) {
+//   if (!feedbackBanner) return;
 
-  const { persist = false } = options;
+//   const { persist = false } = options;
 
-  if (feedbackTimer) {
-    window.clearTimeout(feedbackTimer);
-    feedbackTimer = null;
-  }
+//   if (feedbackTimer) {
+//     window.clearTimeout(feedbackTimer);
+//     feedbackTimer = null;
+//   }
 
-  feedbackBanner.textContent = message;
-  feedbackBanner.className = `feedback-banner feedback-banner--${type}`;
+//   feedbackBanner.textContent = message;
+//   feedbackBanner.className = `feedback-banner feedback-banner--${type}`;
 
-  if (!persist) {
-    feedbackTimer = window.setTimeout(() => {
-      clearFeedback();
-    }, 2600);
-  }
-}
+//   if (!persist) {
+//     feedbackTimer = window.setTimeout(() => {
+//       clearFeedback();
+//     }, 2600);
+//   }
+// }
 
-function clearFeedback() {
-  if (!feedbackBanner) return;
+// function clearFeedback() {
+//   if (!feedbackBanner) return;
 
-  if (feedbackTimer) {
-    window.clearTimeout(feedbackTimer);
-    feedbackTimer = null;
-  }
+//   if (feedbackTimer) {
+//     window.clearTimeout(feedbackTimer);
+//     feedbackTimer = null;
+//   }
 
-  feedbackBanner.textContent = "";
-  feedbackBanner.className = "feedback-banner hidden";
-}
+//   feedbackBanner.textContent = "";
+//   feedbackBanner.className = "feedback-banner hidden";
+// }
 
-  function setOutput(text) {
-    if (!outputPanel) return;
-    outputPanel.textContent = text || "Ready.";
-  }
+  // function setOutput(text) {
+  //   if (!outputPanel) return;
+  //   outputPanel.textContent = text || "Ready.";
+  // }
 
   function getSourceLines() {
     if (!sourceInput) return [];
