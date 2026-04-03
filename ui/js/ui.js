@@ -2271,14 +2271,12 @@ function wireEvents() {
     setInterpreterMode("explain");
   });
 
-sourceInput?.addEventListener("input", () => {
-  clearInlineError();
-  scheduleLivePreview();
-  resetSaveButtonState();
-  refreshDetectedLanguage();
-}
-);
-
+  sourceInput?.addEventListener("input", () => {
+    clearInlineError();
+    scheduleLivePreview();
+    resetSaveButtonState();
+    refreshDetectedLanguage();
+  });
 
 async function init() {
   renderEmptyExplanationState();
@@ -2301,5 +2299,5 @@ async function init() {
   await loadInterpreterModule();
 }
 
-  init();
+init();
 }}());
