@@ -71,6 +71,9 @@ async function loadInterpreterModule() {
   let detectedLanguage = "Unknown";
   let detectedFileName = "";
 
+  let lastRenderedExplanationKey = "";
+  let lastRenderedHistoryKey = "";
+
   let lastInterpretationSnapshot = null;
   let sessionHasInterpretation = false;
   let activeHistoryItemId = null; 
@@ -89,7 +92,6 @@ async function loadInterpreterModule() {
   let liveExplainTimer = null;
   let hasRunAtLeastOnce = false;
 
-  
   let feedbackTimer = null;
   let isBusy = false;
 
@@ -198,31 +200,45 @@ function renderEmptyExplanationState() {
     </div>
   `;
 }
-function renderCurrentExplanationStep() {
-  if (!explanationsPanel) return;
 
-  console.log("Rendering explanation steps:", explanationSteps);
+function renderCurrentExplanationStep(force = false) {
+  if (!explanationsPanel) return;
 
   if (!explanationSteps.length) {
     renderEmptyExplanationState();
+    lastRenderedExplanationKey = "empty";
     return;
   }
+
+  const nextKey = getExplanationRenderKey();
+  if (!force && nextKey === lastRenderedExplanationKey) return;
+
+  lastRenderedExplanationKey = nextKey;
 
   explanationsPanel.innerHTML = `
     <div class="explanation-list">
       ${explanationSteps
         .map(
           (step, index) => `
-            <div class="explanation-block">
-              <p class="explanation-code">Line ${step.lineNumber || index + 1}: ${escapeHtml(step.code || "")}</p>
+            <div class="explanation-block ${index === currentStepIndex ? "explanation-block--active" : ""}">
+              <p class="explanation-line">Line ${step.lineNumber || index + 1}: ${escapeHtml(step.code || "")}</p>
               <p class="explanation-text">${escapeHtml(step.explanation || "")}</p>
-              <p class="explanation-step-label">Step ${index + 1} of ${explanationSteps.length}</p>
+              <p class="explanation-step-meta">Step ${index + 1} of ${explanationSteps.length}</p>
             </div>
           `
         )
         .join("")}
     </div>
   `;
+}
+
+function getExplanationRenderKey() {
+  return JSON.stringify({
+    mode: currentInterpreterMode,
+    stepCount: explanationSteps.length,
+    currentStepIndex,
+    output: outputPanel ? outputPanel.textContent : "",
+  });
 }
 
 function setBusyState(nextBusy, message = "") {
@@ -371,6 +387,7 @@ function updateHistoryItem(itemId, updates) {
   saveHistoryItems(updatedItems);
   renderHistoryList();
   updateHistoryButtonState();
+  lastRenderedHistoryKey = "";
 }
 
 function getSortedHistoryItems(items) {
@@ -603,6 +620,14 @@ function renderHistoryList() {
   const sortedItems = getSortedHistoryItems(normalizedItems);
   const filteredItems = filterHistoryItems(sortedItems, historySearchQuery);
 
+  const nextHistoryKey = getHistoryRenderKey(filteredItems);
+
+  if (nextHistoryKey === lastRenderedHistoryKey) {
+    return;
+  }
+
+  lastRenderedHistoryKey = nextHistoryKey;
+
   if (!filteredItems.length) {
     historyList.classList.add("hidden");
     historyEmptyState.classList.remove("hidden");
@@ -701,30 +726,47 @@ function renderHistoryList() {
   }).join("");
 }
 
+function getHistoryRenderKey(items) {
+  return JSON.stringify({
+    items: items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      pinned: item.pinned,
+      updatedAt: item.updatedAt,
+    })),
+    activeHistoryItemId,
+    editingHistoryItemId,
+    editingHistoryDraft,
+    historySearchQuery,
+  });
+}
+
 function deleteHistoryItem(itemId) {
   const confirmed = window.confirm("Delete this interpretation?");
   if (!confirmed) return;
 
-try {
-  const items = loadHistory();
-  const filtered = items.filter((item) => item.id !== itemId);
+  try {
+    const items = loadHistory();
+    const filtered = items.filter((item) => item.id !== itemId);
 
-  if (activeHistoryItemId === itemId) {
-    activeHistoryItemId = null;
+    if (activeHistoryItemId === itemId) {
+      activeHistoryItemId = null;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    renderHistoryList();
+    updateHistoryButtonState();
+
+    if (filtered.length === 0) {
+      showFeedback("History is now empty.", "info");
+    } else {
+      showFeedback("Interpretation deleted.", "info");
+    }
+  } catch (error) {
+    console.warn("Failed to delete history item:", error);
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  renderHistoryList();
-  updateHistoryButtonState();
-
-  if (filtered.length === 0) {
-    showFeedback("History is now empty.", "info");
-  } else {
-    showFeedback("Interpretation deleted.", "info");
-  }
-} catch (error) {
-  console.warn("Failed to delete history item:", error);
-}
+  lastRenderedHistoryKey = "";
 }
 
 function openHistoryPanel() {
@@ -1928,6 +1970,7 @@ function handleSaveInterpretation() {
   flashSavedState();
   pulseHistoryButton();
   showFeedback("Interpretation saved to local history.", "success");
+  lastRenderedHistoryKey = "";
 }
 
   function clearWorkspace() {
@@ -1971,7 +2014,30 @@ function handleSaveInterpretation() {
     }
 
     showFeedback("Workspace cleared.", "info");
+
+    lastRenderedHistoryKey = "";
   }
+
+function scheduleLivePreview() {
+  if (liveExplainTimer) {
+    window.clearTimeout(liveExplainTimer);
+  }
+
+  liveExplainTimer = window.setTimeout(() => {
+    if (!sourceInput) return;
+
+    const source = sourceInput.value || "";
+    if (!source.trim()) return;
+
+    renderLiveExplanationPreview(source);
+  }, 160);
+}
+
+function resetSaveButtonState() {
+  if (!saveBtn) return;
+  saveBtn.classList.remove("action-btn--saved");
+  saveBtn.textContent = "Save Interpretation";
+}
 
   async function handleFileUpload(event) {
     clearInlineError();
@@ -2082,29 +2148,29 @@ function wireEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && historyPanel && !historyPanel.classList.contains("hidden")) {
-    closeHistoryPanel();
-  }
-});
+    if (event.key === "Escape" && historyPanel && !historyPanel.classList.contains("hidden")) {
+      closeHistoryPanel();
+    }
+  });
 
   closeHistoryBtn?.addEventListener("click", closeHistoryPanel);
 
-historyBackdrop?.addEventListener("click", closeHistoryPanel);
+  historyBackdrop?.addEventListener("click", closeHistoryPanel);
 
-clearHistoryBtn?.addEventListener("click", () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    renderHistoryList();
-    updateHistoryButtonState();
-    closeHistoryPanel();
-  } catch (error) {
-    console.warn("Failed to clear history:", error);
-  }
-});
+  clearHistoryBtn?.addEventListener("click", () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      renderHistoryList();
+      updateHistoryButtonState();
+      closeHistoryPanel();
+    } catch (error) {
+      console.warn("Failed to clear history:", error);
+    }
+  });
 
-rememberHistoryToggle?.addEventListener("change", (event) => {
-  setRememberPreference(!!event.target.checked);
-});
+  rememberHistoryToggle?.addEventListener("change", (event) => {
+    setRememberPreference(!!event.target.checked);
+  });
 
   historyList?.addEventListener("click", (event) => {
     const loadButton = event.target.closest("[data-load-history-id]");
@@ -2143,20 +2209,20 @@ rememberHistoryToggle?.addEventListener("change", (event) => {
   }
 
   const deleteButton = event.target.closest("[data-delete-history-id]");
-  if (deleteButton) {
-    deleteHistoryItem(deleteButton.getAttribute("data-delete-history-id"));
-  }
-});
+    if (deleteButton) {
+      deleteHistoryItem(deleteButton.getAttribute("data-delete-history-id"));
+    }
+  });
 
-historyList?.addEventListener("input", (event) => {
-  const input = event.target.closest("[data-history-title-input]");
-  if (!input) return;
-  editingHistoryDraft = input.value;
-});
+  historyList?.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-history-title-input]");
+    if (!input) return;
+    editingHistoryDraft = input.value;
+  });
 
-historyList?.addEventListener("keydown", (event) => {
-  const input = event.target.closest("[data-history-title-input]");
-  if (!input) return;
+  historyList?.addEventListener("keydown", (event) => {
+    const input = event.target.closest("[data-history-title-input]");
+    if (!input) return;
 
   if (event.key === "Enter") {
     event.preventDefault();
@@ -2164,10 +2230,10 @@ historyList?.addEventListener("keydown", (event) => {
   }
 
   if (event.key === "Escape") {
-    event.preventDefault();
-    cancelHistoryTitleEdit();
-  }
-});
+      event.preventDefault();
+      cancelHistoryTitleEdit();
+    }
+  });
 
   historySearchInput?.addEventListener("input", (event) => {
     historySearchQuery = event.target.value || "";
@@ -2207,22 +2273,11 @@ historyList?.addEventListener("keydown", (event) => {
 
 sourceInput?.addEventListener("input", () => {
   clearInlineError();
-
-  if (liveExplainTimer) {
-    window.clearTimeout(liveExplainTimer);
-  }
-
-  liveExplainTimer = window.setTimeout(() => {
-    renderLiveExplanationPreview(sourceInput.value);
-  }, 120);
-
-  if (saveBtn) {
-    saveBtn.classList.remove("action-btn--saved");
-    setSaveButtonLabel("Save Interpretation");
-  }
-
+  scheduleLivePreview();
+  resetSaveButtonState();
   refreshDetectedLanguage();
-});
+}
+);
 
 
 async function init() {
