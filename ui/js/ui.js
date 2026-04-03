@@ -3,24 +3,30 @@ let wasmModule = null;
 async function loadInterpreterModule() {
   const factory =
     (typeof VisualInterpreterModule === "function" && VisualInterpreterModule) ||
-    (typeof window !== "undefined" && typeof window.VisualInterpreterModule === "function" && window.VisualInterpreterModule) ||
-    (typeof Module === "function" && Module) ||
-    (typeof window !== "undefined" && typeof window.Module === "function" && window.Module);
+    (typeof window !== "undefined" && typeof window.VisualInterpreterModule === "function" && window.VisualInterpreterModule);
 
-  if (!factory) {
-    console.warn("Interpreter factory is not available.");
-    return null;
+  if (factory) {
+    try {
+      wasmModule = await factory();
+      window.vi = wasmModule;
+      console.log("Interpreter ready (factory).");
+      return wasmModule;
+    } catch (error) {
+      console.error("Failed to load interpreter:", error);
+      return null;
+    }
   }
 
-  try {
-    wasmModule = await factory();
+  // fallback for Module (object-based)
+  if (typeof Module === "object" || typeof window.Module === "object") {
+    wasmModule = Module || window.Module;
     window.vi = wasmModule;
-    console.log("Interpreter ready.");
+    console.log("Interpreter ready (Module object).");
     return wasmModule;
-  } catch (error) {
-    console.error("Failed to load interpreter:", error);
-    return null;
   }
+
+  console.warn("Interpreter factory is not available.");
+  return null;
 }
 
 (function () {
@@ -321,13 +327,6 @@ function setBusyState(nextBusy, message = "") {
   historyPulseTimer = window.setTimeout(() => {
     historyBtn.classList.remove("nav-btn--pulse");
   }, 2200);
-}
-
-function activateHistoryUI() {
-  sessionHasInterpretation = true;
-  if (!historyBtn) return;
-  historyBtn.classList.remove("nav-btn--muted");
-  historyBtn.classList.remove("nav-btn--disabled");
 }
 
   function loadHistory() {
@@ -2277,6 +2276,7 @@ function wireEvents() {
     resetSaveButtonState();
     refreshDetectedLanguage();
   });
+}
 
 async function init() {
   renderEmptyExplanationState();
@@ -2300,4 +2300,4 @@ async function init() {
 }
 
 init();
-}}());
+})();
