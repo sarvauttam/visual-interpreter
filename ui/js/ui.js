@@ -122,67 +122,67 @@ async function loadInterpreterModule() {
     size: 16,
   };
 
-  // function escapeHtml(value) {
-  //   return String(value)
-  //     .replace(/&/g, "&amp;")
-  //     .replace(/</g, "&lt;")
-  //     .replace(/>/g, "&gt;")
-  //     .replace(/"/g, "&quot;")
-  //     .replace(/'/g, "&#039;");
-  // }
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
 
-  // function showInlineError(message) {
-  //   if (!inlineErrorHost) return;
+  function showInlineError(message) {
+    if (!inlineErrorHost) return;
 
-  //   inlineErrorHost.innerHTML = `
-  //     <div class="inline-error">
-  //       <span>❌</span>
-  //       <span>${escapeHtml(message)}</span>
-  //     </div>
-  //   `;
-  // }
+    inlineErrorHost.innerHTML = `
+      <div class="inline-error">
+        <span>❌</span>
+        <span>${escapeHtml(message)}</span>
+      </div>
+    `;
+  }
 
-  // function clearInlineError() {
-  //   if (!inlineErrorHost) return;
-  //   inlineErrorHost.innerHTML = "";
-  // }
+  function clearInlineError() {
+    if (!inlineErrorHost) return;
+    inlineErrorHost.innerHTML = "";
+  }
 
-//   function showFeedback(message, type = "info", options = {}) {
-//   if (!feedbackBanner) return;
+  function showFeedback(message, type = "info", options = {}) {
+  if (!feedbackBanner) return;
 
-//   const { persist = false } = options;
+  const { persist = false } = options;
 
-//   if (feedbackTimer) {
-//     window.clearTimeout(feedbackTimer);
-//     feedbackTimer = null;
-//   }
+  if (feedbackTimer) {
+    window.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
+  }
 
-//   feedbackBanner.textContent = message;
-//   feedbackBanner.className = `feedback-banner feedback-banner--${type}`;
+  feedbackBanner.textContent = message;
+  feedbackBanner.className = `feedback-banner feedback-banner--${type}`;
 
-//   if (!persist) {
-//     feedbackTimer = window.setTimeout(() => {
-//       clearFeedback();
-//     }, 2600);
-//   }
-// }
+  if (!persist) {
+    feedbackTimer = window.setTimeout(() => {
+      clearFeedback();
+    }, 2600);
+  }
+}
 
-// function clearFeedback() {
-//   if (!feedbackBanner) return;
+function clearFeedback() {
+  if (!feedbackBanner) return;
 
-//   if (feedbackTimer) {
-//     window.clearTimeout(feedbackTimer);
-//     feedbackTimer = null;
-//   }
+  if (feedbackTimer) {
+    window.clearTimeout(feedbackTimer);
+    feedbackTimer = null;
+  }
 
-//   feedbackBanner.textContent = "";
-//   feedbackBanner.className = "feedback-banner hidden";
-// }
+  feedbackBanner.textContent = "";
+  feedbackBanner.className = "feedback-banner hidden";
+}
 
-  // function setOutput(text) {
-  //   if (!outputPanel) return;
-  //   outputPanel.textContent = text || "Ready.";
-  // }
+  function setOutput(text) {
+    if (!outputPanel) return;
+    outputPanel.textContent = text || "Ready.";
+  }
 
   function getSourceLines() {
     if (!sourceInput) return [];
