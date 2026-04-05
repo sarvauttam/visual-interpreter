@@ -53,11 +53,11 @@ function setRunButtonBusyState(button, isBusy) {
 }
 
 function getWasmScriptUrl() {
-  return new URL("../../vi_wasm.js", import.meta.url).href;
+  return new URL("./vi_wasm.js", import.meta.url).href;
 }
 
 function getWasmAssetUrl(assetName) {
-  return new URL(`../../${assetName}`, import.meta.url).href;
+  return new URL(`./${assetName}`, import.meta.url).href;
 }
 
 function safeJsonParse(value) {
@@ -305,6 +305,8 @@ export function createRunner(dom) {
   }
 
   async function ensureWasmLoaded() {
+    console.log("ensureWasmLoaded called");
+
     if (state.wasmReady && state.wasmModule) {
       return state.wasmModule;
     }
@@ -317,6 +319,8 @@ export function createRunner(dom) {
       }
 
       window.Module.locateFile = (path) => getWasmAssetUrl(path);
+
+      console.log("Loading WASM script:", getWasmScriptUrl());
 
       await loadScriptOnce(getWasmScriptUrl());
 
