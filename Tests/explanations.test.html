@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ISeeCode Explanation Tests</title>
+  <style>
+    body {
+      font-family: Inter, Arial, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f6f8fc;
+      color: #1f2937;
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    .summary {
+      margin: 16px 0 24px;
+      padding: 16px;
+      border-radius: 12px;
+      background: white;
+      border: 1px solid #dbe4f0;
+    }
+
+    .test-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .test-card {
+      background: white;
+      border: 1px solid #dbe4f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .test-card.pass {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .test-card.fail {
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .test-name {
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .test-message {
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    code {
+      font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+      background: #f4f7fb;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ISeeCode Explanation Tests</h1>
+
+  <div class="summary" id="summary">
+    Running tests...
+  </div>
+
+  <div class="test-list" id="testList"></div>
+
+  <script type="module" src="./explanations.test.js"></script>
+</body>
+</html>

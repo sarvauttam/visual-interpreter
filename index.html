@@ -12,187 +12,151 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="topbar__left">
-        <div class="brand-mark">IC</div>
-        <div class="brand-text">
-          <h1>ISeeCode</h1>
-          <p>Write code. Run it. Understand it.</p>
+      <div class="topbar-left">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">◉</div>
+          <div class="brand-text">
+            <h1>ISeeCode</h1>
+            <p>Learn code as you write it</p>
+          </div>
         </div>
       </div>
 
-      <nav class="topbar__right">
-        <button id="howToUseBtn" class="nav-btn" type="button">How to Use</button>
-        <label for="fileInput" class="nav-btn nav-btn--accent">Upload File</label>
-        <button id="historyBtn" class="nav-btn nav-btn--muted" type="button">History</button>
-        <button id="accountBtn" class="nav-btn" type="button">Account</button>
+      <nav class="topbar-right" aria-label="Main navigation">
+        <button class="topbar-btn" id="howToUseBtn" type="button">How to Use</button>
+        <button class="topbar-btn" id="uploadBtn" type="button">Upload File</button>
+        <button class="topbar-btn" id="historyBtn" type="button">History</button>
+        <button class="topbar-btn topbar-btn--account" id="accountBtn" type="button">Account</button>
       </nav>
     </header>
 
-    <div id="feedbackBanner" class="feedback-banner hidden" aria-live="polite"></div>
-
-    <main class="main-layout">
-      <section class="panel panel--editor" aria-labelledby="codePanelTitle">
-        <div class="panel__header">
-          <div>
-            <h2 id="codePanelTitle">Code</h2>
-            <p class="panel__subtext">Write or upload your code here.</p>
-            <p id="modeDescription" class="mode-description">
-              Execution Mode runs supported code with the interpreter.
-            </p>
-          </div>
-
-          <div class="editor-actions">
-            <div class="mode-switch" role="tablist" aria-label="Interpreter mode">
-              <button
-                id="executionModeBtn"
-                class="mode-switch__btn mode-switch__btn--active"
-                type="button"
-                aria-pressed="true"
-              >
-                Execution Mode
-              </button>
-              <button
-                id="readingModeBtn"
-                class="mode-switch__btn"
-                type="button"
-                aria-pressed="false"
-              >
-                Reading Mode
-              </button>
+    <main class="workspace-layout">
+      <section class="left-column">
+        <section class="panel code-panel" aria-labelledby="codePanelTitle">
+          <div class="panel-header">
+            <div>
+              <h2 id="codePanelTitle">Code Editor</h2>
+              <p class="panel-subtitle">Write your code here and click Run when you're ready.</p>
             </div>
 
-            <button id="runBtn" class="action-btn action-btn--primary" type="button">Run</button>
-            <button id="clearBtn" class="action-btn" type="button">Clear</button>
+            <div class="panel-actions">
+              <button class="secondary-btn" id="clearBtn" type="button">Clear</button>
+              <button class="primary-btn" id="runBtn" type="button">Run</button>
+            </div>
           </div>
-        </div>
 
-        <div class="editor-toolbar" aria-label="Editor options">
-          <label class="toolbar-group" for="editorFontSize">
-            <span>Text size</span>
-            <select id="editorFontSize">
-              <option value="14">14</option>
-              <option value="16" selected>16</option>
-              <option value="18">18</option>
-              <option value="20">20</option>
-              <option value="22">22</option>
-            </select>
-          </label>
+          <div class="editor-toolbar" aria-label="Editor tools">
+            <div class="font-size-control" aria-label="Font size controls">
+              <button class="toolbar-btn toolbar-btn--soft" id="fontDecreaseBtn" type="button" title="Decrease font size">−</button>
 
-          <button id="boldTextBtn" class="toolbar-btn" type="button">Bold</button>
-          <button id="italicTextBtn" class="toolbar-btn" type="button">Italic</button>
-          <button id="underlineTextBtn" class="toolbar-btn" type="button">Underline</button>
+              <label class="sr-only" for="fontSizeInput">Font size</label>
+              <input
+                id="fontSizeInput"
+                class="font-size-input"
+                type="number"
+                min="12"
+                max="24"
+                step="1"
+                value="16"
+                inputmode="numeric"
+                aria-label="Font size"
+              />
 
-          <div class="editor-status-group">
-            <div class="status-pill" id="fileStatus">No file loaded</div>
-            <div class="status-pill" id="languageStatus">Language: Unknown</div>
-            <div class="status-pill" id="modeFitStatus">Mode fit: Not checked</div>
+              <button class="toolbar-btn toolbar-btn--soft" id="fontIncreaseBtn" type="button" title="Increase font size">+</button>
+            </div>
+
+            <div class="toolbar-divider" aria-hidden="true"></div>
+
+            <button class="toolbar-btn toolbar-btn--format" id="boldBtn" type="button" title="Bold" aria-pressed="false">
+              <strong>B</strong>
+            </button>
+
+            <button class="toolbar-btn toolbar-btn--format" id="italicBtn" type="button" title="Italic" aria-pressed="false">
+              <em>I</em>
+            </button>
+
+            <button class="toolbar-btn toolbar-btn--format" id="underlineBtn" type="button" title="Underline" aria-pressed="false">
+              <span class="toolbar-underline">U</span>
+            </button>
           </div>
-        </div>
 
-        <div class="editor-wrap">
-          <textarea
-            id="sourceInput"
-            class="code-editor"
-            spellcheck="false"
-            placeholder="Write your code here..."
-            aria-label="Code editor"
-          ></textarea>
-        </div>
+          <div class="editor-area">
+            <label for="codeInput" class="sr-only">Code input</label>
+            <textarea
+              id="codeInput"
+              class="code-input"
+              spellcheck="false"
+              placeholder="#include &lt;iostream&gt;
+using namespace std;
 
-        <div id="inlineErrorHost" class="inline-error-host" aria-live="polite"></div>
+int main() {
+    int x = 5;
+    cout &lt;&lt; x;
+    return 0;
+}"
+            ></textarea>
+          </div>
+        </section>
+
+        <section class="panel output-panel" aria-labelledby="outputPanelTitle">
+          <div class="panel-header">
+            <div>
+              <h2 id="outputPanelTitle">Output</h2>
+              <p class="panel-subtitle">This is where your program shows its result after you click Run.</p>
+            </div>
+          </div>
+
+          <div class="output-content" id="outputContent">
+            <div class="output-placeholder">
+              Nothing has been run yet.
+            </div>
+          </div>
+        </section>
       </section>
 
-      <section class="panel panel--explanations" aria-labelledby="explanationsTitle">
-        <div class="panel__header">
+      <section class="panel explanation-panel" aria-labelledby="explanationPanelTitle">
+        <div class="panel-header">
           <div>
-            <h2 id="explanationsTitle">Explanations</h2>
-            <p class="panel__subtext">Friendly step-by-step interpretation appears here.</p>
+            <h2 id="explanationPanelTitle">Explanations</h2>
+            <p class="panel-subtitle">Friendly guidance will appear here as you type and run your code.</p>
           </div>
+        </div>
 
-          <div class="explanation-controls"></div>
-
-        <div id="explanationsPanel" class="explanations-panel">
-          <div class="empty-state">
-            <h3>Ready to explain your code</h3>
+        <div class="explanation-content" id="explanationContent">
+          <div class="empty-state-card">
+            <h3>Welcome to ISeeCode</h3>
             <p>
-              Your code explanations will appear here after you run the program.
+              Start typing code on the left. As your lines become complete,
+              ISeeCode will explain what they mean in simple language.
+            </p>
+            <p class="muted">
+              If a line is still unfinished, you will see a helpful hint instead of a fake explanation.
             </p>
           </div>
         </div>
       </section>
     </main>
 
-    <section class="panel panel--output" aria-labelledby="outputTitle">
-      <div class="panel__header">
+  <input
+    type="file"
+    id="fileInput"
+    class="hidden-file-input"
+    accept=".txt,.cpp,.cc,.cxx,.c,.hpp,.h"
+  />
+
+    <div class="modal-backdrop hidden" id="modalBackdrop" aria-hidden="true">
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
         <div>
-          <h2 id="outputTitle">Output</h2>
-          <p class="panel__subtext">Program results will appear below.</p>
+          <h2 id="modalTitle">Modal Title</h2>
+          <p class="modal-subtitle" id="modalSubtitle"></p>
         </div>
-
-        <button id="saveBtn" class="action-btn" type="button">Save Interpretation</button>
-
-        <label class="remember-toggle" for="rememberHistoryToggle">
-          <input id="rememberHistoryToggle" type="checkbox" checked />
-          <span>Remember on this device</span>
-        </label>
+        <button class="modal-close-btn" id="modalCloseBtn" type="button" aria-label="Close dialog">✕</button>
       </div>
-
-      <pre id="outputPanel" class="output-panel">Ready.</pre>
-    </section>
-  </div>
-
-  <input id="fileInput" type="file" hidden />
-
-<script src="./ui/js/vi_wasm.js"></script>
-<script>
-  console.log("window.VisualInterpreterModule:", window.VisualInterpreterModule);
-  console.log("window.Module:", window.Module);
-  console.log("typeof VisualInterpreterModule:", typeof VisualInterpreterModule);
-  console.log("typeof Module:", typeof Module);
-</script>
-
-<aside
-  id="historyPanel"
-  class="history-panel hidden"
-  aria-labelledby="historyTitle"
-  aria-hidden="true"
->
-  <div class="history-panel__header">
-    <div>
-      <h2 id="historyTitle">History</h2>
-      <p class="panel__subtext">Saved interpretations on this device.</p>
-    </div>
-
-    <div class="history-toolbar">
-      <input
-        id="historySearchInput"
-        class="history-search-input"
-        type="text"
-        placeholder="Search history"
-        aria-label="Search history"
-      />
-    </div>
-
-    <div class="history-panel__actions">
-      <button id="clearHistoryBtn" class="action-btn" type="button">Clear History</button>
-      <button id="closeHistoryBtn" class="action-btn" type="button">Close</button>
+      <div class="modal-body" id="modalBody"></div>
     </div>
   </div>
 
-  <div id="historyEmptyState" class="empty-state">
-    <div>
-      <h3>No saved interpretations yet</h3>
-      <p>Run code, then use “Save Interpretation” to keep it here.</p>
-    </div>
-  </div>
-
-  <div id="historyList" class="history-list hidden"></div>
-</aside>
-
-<div id="historyBackdrop" class="history-backdrop hidden" aria-hidden="true"></div>
-
-<script src="./ui/js/vi_wasm.js"></script>
-<script src="./ui/js/feedback.js"></script>
-<script src="./ui/js/ui.js"></script>
+  <script type="module" src="ui/js/app.js"></script>
 </body>
 </html>
