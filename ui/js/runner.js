@@ -285,66 +285,42 @@ export function createRunner(dom) {
     );
   }
 
-  function getPossibleRunFunctions(moduleRef) {
-    return [
-      moduleRef?.run_source_to_trace,
-      moduleRef?.ccall
-        ? (source) => {
-            const raw = moduleRef.ccall(
-              "run_source_to_trace",
-              "string",
-              ["string"],
-              [source]
-            );
-            return raw;
-          }
-        : null,
-      window.run_source_to_trace,
-      window.Module?.run_source_to_trace,
-    ].filter(Boolean);
-  }
+function getPossibleRunFunctions(moduleRef) {
+  return [
+    typeof moduleRef?.run_source_to_trace === "function"
+      ? moduleRef.run_source_to_trace.bind(moduleRef)
+      : null,
+  ].filter(Boolean);
+}
 
   async function ensureWasmLoaded() {
-    console.log("ensureWasmLoaded called");
-
-    if (state.wasmReady && state.wasmModule) {
-      return state.wasmModule;
-    }
-
-    if (!state.wasmLoadAttempted) {
-      state.wasmLoadAttempted = true;
-
-      if (!window.Module) {
-        window.Module = {};
-      }
-
-      window.Module.locateFile = (path) => getWasmAssetUrl(path);
-
-      console.log("Loading WASM script:", getWasmScriptUrl());
-
-      await loadScriptOnce(getWasmScriptUrl());
-
-      if (typeof window.Module?.onRuntimeInitialized === "function") {
-        await new Promise((resolve) => {
-          const original = window.Module.onRuntimeInitialized;
-          window.Module.onRuntimeInitialized = () => {
-            try {
-              original();
-            } finally {
-              resolve();
-            }
-          };
-        });
-      } else if (!window.Module || Object.keys(window.Module).length === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 150));
-      }
-    }
-
-    state.wasmModule = window.Module || {};
-    state.wasmReady = true;
-
+  if (state.wasmReady && state.wasmModule) {
     return state.wasmModule;
   }
+
+  if (!state.wasmLoadAttempted) {
+    state.wasmLoadAttempted = true;
+
+    await loadScriptOnce(getWasmScriptUrl());
+
+    const factory =
+      window.VisualInterpreterModule ||
+      globalThis.VisualInterpreterModule;
+
+    if (typeof factory !== "function") {
+      throw new Error("VisualInterpreterModule factory was not found after loading vi_wasm.js.");
+    }
+
+    const moduleInstance = await factory({
+      locateFile: (path) => getWasmAssetUrl(path),
+    });
+
+    state.wasmModule = moduleInstance;
+    state.wasmReady = true;
+  }
+
+  return state.wasmModule;
+}
 
   function normalizeRawResult(rawResult) {
     if (rawResult == null) {
@@ -425,7 +401,12 @@ async function runSource(source) {
   renderOutputMessage(dom.outputContent, "Running your program...", "info");
 
   try {
+      const normalizedSource = source.replace(/\r\n/g, "\n").trim();
+
+      console.log("FINAL SOURCE:", JSON.stringify(normalizedSource));
+
       const wasmModule = await ensureWasmLoaded();
+
       const runFunctions = getPossibleRunFunctions(wasmModule);
 
       if (!runFunctions.length) {
@@ -439,7 +420,7 @@ async function runSource(source) {
 
       for (const runFn of runFunctions) {
         try {
-          rawResult = await runFn(source);
+          rawResult = await runFn(normalizedSource);
           if (rawResult != null) break;
         } catch (error) {
           lastError = error;
