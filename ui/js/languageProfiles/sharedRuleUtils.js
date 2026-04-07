@@ -17,6 +17,18 @@ export function isBlankLine(trimmed) {
   return !trimmed;
 }
 
+export function isLikelyIncompleteLine(line) {
+  const trimmed = String(line || "").trim();
+  if (!trimmed) return false;
+
+  if (/[=+\-*/%<>!&|?:.,([{]$/.test(trimmed)) return true;
+  if (/^(if|elif|else if|for|while|function|def|class|try|catch|except|with)\b.*[^:;{})\]]$/.test(trimmed)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function explainComment(ctx, options = {}) {
   const {
     style = "slash",
@@ -28,7 +40,7 @@ export function explainComment(ctx, options = {}) {
     python: /^#/,
     slash: /^\/\//,
     blockStart: /^\/\*/,
-    blockEnd: /^\*\//,
+    blockEnd: /^\*\/$/,
     blockMiddle: /^\*/,
   };
 
@@ -65,12 +77,12 @@ export function explainConditionals(ctx, options = {}) {
     elseText = "This line starts the fallback block that runs when earlier conditions were false.",
   } = options;
 
-  if (ifPattern && ifPattern.test(ctx.trimmed)) {
-    return ctx.addExplanation(ifText);
-  }
-
   if (elseIfPattern && elseIfPattern.test(ctx.trimmed)) {
     return ctx.addExplanation(elseIfText);
+  }
+
+  if (ifPattern && ifPattern.test(ctx.trimmed)) {
+    return ctx.addExplanation(ifText);
   }
 
   if (elsePattern && elsePattern.test(ctx.trimmed)) {
@@ -172,9 +184,19 @@ export function buildFallback(options = {}) {
   const {
     languageName = "this",
     confidence = "high",
+    isMixed = false,
+    isPartialSource = false,
     defaultText = `This line is part of the ${languageName} program logic.`,
+    mediumConfidenceText = `This appears to be part of the ${languageName} program logic.`,
     lowConfidenceText = `This line appears to be part of the program logic, but the code may be incomplete or mixed.`,
+    mixedText = `This looks like part of the ${languageName} logic, but the snippet may mix more than one coding style.`,
+    partialText = `This appears to be part of the ${languageName} logic, though the snippet may still be incomplete.`,
   } = options;
 
-  return confidence === "low" ? lowConfidenceText : defaultText;
+  if (confidence === "low") return lowConfidenceText;
+  if (confidence === "medium") return mediumConfidenceText;
+  if (isMixed) return mixedText;
+  if (isPartialSource) return partialText;
+
+  return defaultText;
 }

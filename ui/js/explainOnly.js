@@ -2,6 +2,7 @@ import { cppProfile } from "./languageProfiles/cppProfile.js";
 import { pythonProfile } from "./languageProfiles/pythonProfile.js";
 import { javascriptProfile } from "./languageProfiles/javascriptProfile.js";
 import { csharpProfile } from "./languageProfiles/csharpProfile.js";
+import { isLikelyIncompleteLine } from "./languageProfiles/sharedRuleUtils.js";
 
 const LANGUAGE_PROFILES = [
   cppProfile,
@@ -40,6 +41,31 @@ function scoreProfile(profile, text) {
   };
 }
 
+function countChar(text, target) {
+  return [...String(text || "")].filter((char) => char === target).length;
+}
+
+function detectPartialSource(text) {
+  const value = String(text || "");
+  const lines = value.replace(/\r\n/g, "\n").split("\n");
+  const meaningfulLines = lines.filter((line) => line.trim());
+
+  const unmatchedPairs =
+    countChar(value, "(") > countChar(value, ")") ||
+    countChar(value, "{") > countChar(value, "}") ||
+    countChar(value, "[") > countChar(value, "]");
+
+  const trailingIncompleteLine = meaningfulLines.some((line) =>
+    isLikelyIncompleteLine(line)
+  );
+
+  return unmatchedPairs || trailingIncompleteLine;
+}
+
+function buildCompetingLanguages(scoredProfiles) {
+  return scoredProfiles.slice(0, 2).map((entry) => entry.profile.language);
+}
+
 export function detectSourceProfile(source) {
   const text = String(source || "");
   const trimmed = text.trim();
@@ -52,6 +78,9 @@ export function detectSourceProfile(source) {
       profile: null,
       confidence: 0,
       matchedSignals: 0,
+      competingLanguages: [],
+      isMixed: false,
+      isPartialSource: false,
     };
   }
 
@@ -63,6 +92,8 @@ export function detectSourceProfile(source) {
       return b.matchedSignals - a.matchedSignals;
     });
 
+  const isPartialSource = detectPartialSource(text);
+
   if (scoredProfiles.length) {
     const best = scoredProfiles[0];
     const second = scoredProfiles[1] || null;
@@ -71,21 +102,38 @@ export function detectSourceProfile(source) {
       second == null
         ? "high"
         : best.score >= second.score + 3
-          ? "high"
-          : best.score > second.score
-            ? "medium"
-            : "low";
+        ? "high"
+        : best.score > second.score
+        ? "medium"
+        : "low";
+
+    const competingLanguages = buildCompetingLanguages(scoredProfiles);
+    const isMixed =
+      competingLanguages.length > 1 &&
+      (confidence === "low" || confidence === "medium");
+
+    let reason = best.profile.reason;
+
+    if (confidence === "low") {
+      reason = `${best.profile.reason} The language guess is tentative because the code shares patterns with more than one language.`;
+    } else if (confidence === "medium") {
+      reason = `${best.profile.reason} Some lines may also resemble another language or an incomplete snippet.`;
+    }
+
+    if (isPartialSource) {
+      reason += " The snippet also appears to be incomplete.";
+    }
 
     return {
       mode: "explain-only",
       language: best.profile.language,
-      reason:
-        confidence === "low"
-          ? `${best.profile.reason} The language guess is tentative because the code shares patterns with more than one language.`
-          : best.profile.reason,
+      reason,
       profile: best.profile,
       confidence,
       matchedSignals: best.matchedSignals,
+      competingLanguages,
+      isMixed,
+      isPartialSource,
     };
   }
 
@@ -97,6 +145,9 @@ export function detectSourceProfile(source) {
     profile: null,
     confidence: "high",
     matchedSignals: 0,
+    competingLanguages: [],
+    isMixed: false,
+    isPartialSource,
   };
 }
 
@@ -104,26 +155,65 @@ export function buildExplainOnlyHistoryMessage(profile) {
   return `Explained as ${profile.language} without execution.`;
 }
 
-function buildExplainOnlyExplanation(profile, source) {
-  const lines = String(source || "")
-    .replace(/\r\n/g, "\n")
-    .split("\n");
+function buildExplanationPrefix(code, sourceProfile) {
+  const parts = [];
+  const language = sourceProfile?.language || "this language";
+  const confidence = sourceProfile?.confidence || "high";
 
+  if (confidence === "low") {
+    parts.push(
+      `This looks like ${language}, but the snippet may be mixed or incomplete.`
+    );
+  } else if (confidence === "medium") {
+    parts.push(`This appears to be ${language}.`);
+  }
+
+  if (sourceProfile?.isPartialSource && isLikelyIncompleteLine(code)) {
+    parts.push("This line may be incomplete.");
+  }
+
+  return parts.join(" ");
+}
+
+function buildExplainOnlyExplanation(profile, source, sourceProfile) {
+  const lines = String(source || "").replace(/\r\n/g, "\n").split("\n");
   const items = [];
 
   function add(lineNumber, code, explanation) {
     if (!String(code || "").trim()) return;
-    items.push({ lineNumber, code, explanation });
+
+    const prefix = buildExplanationPrefix(code, sourceProfile);
+    const finalExplanation = prefix
+      ? `${prefix} ${explanation}`
+      : explanation;
+
+    items.push({
+      lineNumber,
+      code,
+      explanation: finalExplanation,
+    });
   }
+
+  const explainOptions = {
+    confidence: sourceProfile?.confidence || "high",
+    isMixed: !!sourceProfile?.isMixed,
+    isPartialSource: !!sourceProfile?.isPartialSource,
+    competingLanguages: sourceProfile?.competingLanguages || [],
+  };
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
+
     if (!line.trim()) return;
 
     if (profile?.explainLine) {
-      profile.explainLine(line, lineNumber, add);
+      profile.explainLine(line, lineNumber, add, explainOptions);
     } else {
-      add(lineNumber, line, "This line is part of the code and contributes to the program logic.");
+      add(
+        lineNumber,
+        line,
+        "This line is part of the code and contributes to the program logic."
+      );
     }
   });
 
@@ -131,42 +221,42 @@ function buildExplainOnlyExplanation(profile, source) {
 }
 
 export function renderExplainOnlyExplanation(container, source, sourceProfile) {
-  const steps = buildExplainOnlyExplanation(sourceProfile.profile, source);
+  const steps = buildExplainOnlyExplanation(
+    sourceProfile.profile,
+    source,
+    sourceProfile
+  );
 
   if (!container) return;
 
   if (!steps.length) {
     container.innerHTML = `
-      <div class="empty-state">
-        <div>
-          <h3>Ready to explain your code</h3>
-          <p>Your code explanations will appear here after you run the program.</p>
-        </div>
+      <div class="explanation-placeholder">
+        <h3>Ready to explain your code</h3>
+        <p>Your code explanations will appear here after you run the program.</p>
       </div>
     `;
     return;
   }
 
   container.innerHTML = `
-    <div class="explanation-list">
-      ${steps
-        .map(
-          (step, index) => `
-            <div class="explanation-card">
-              <div class="explanation-header">
-                <span class="explanation-line">Line ${step.lineNumber}</span>
-                <code class="explanation-code">${escapeHtml(step.code || "")}</code>
-              </div>
-              <div class="explanation-body">
-                ${escapeHtml(step.explanation || "")}
-              </div>
-              <div class="explanation-footer">
-                Explain-only step ${index + 1} of ${steps.length}
-              </div>
-            </div>
-          `
-        )
-        .join("")}
-    </div>
+    ${steps
+      .map(
+        (step, index) => `
+          <div class="explanation-step card">
+            <div class="explanation-step__meta">Line ${step.lineNumber}</div>
+            <pre class="explanation-step__code"><code>${escapeHtml(
+              step.code || ""
+            )}</code></pre>
+            <p class="explanation-step__text">${escapeHtml(
+              step.explanation || ""
+            )}</p>
+            <div class="explanation-step__count">Explain-only step ${
+              index + 1
+            } of ${steps.length}</div>
+          </div>
+        `
+      )
+      .join("")}
   `;
 }

@@ -1,3 +1,14 @@
+import {
+  buildFallback,
+  createRuleContext,
+  explainBraces,
+  explainComment,
+  explainConditionals,
+  explainFlowKeywords,
+  explainFunctionCall,
+  explainLoops,
+} from "./sharedRuleUtils.js";
+
 export const csharpProfile = {
   language: "C#",
   signals: [
@@ -14,18 +25,56 @@ export const csharpProfile = {
     { pattern: /\bawait\b/, weight: 2 },
   ],
   reason:
-    "This looks like C#. ISeeCode can explain it, but it does not execute C# in the current browser runner.",
+    "This looks like C#.\nISeeCode can explain it, but it does not execute C# in the current browser runner.",
 
-  explainLine(line, lineNumber, add) {
-    const trimmed = line.trim();
+  explainLine(line, lineNumber, add, options = {}) {
+    const ctx = createRuleContext(line, lineNumber, add);
+    const { trimmed } = ctx;
+    const confidence = options.confidence || "high";
+
     if (!trimmed) return false;
 
-    if (/^\/\//.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This is a comment. It helps the reader understand the code, but C# does not run it."
-      );
+    if (
+      explainComment(ctx, {
+        style: "slash",
+        languageName: "C#",
+        commentText:
+          "This is a comment. It helps the reader understand the code, but C# does not run it.",
+      })
+    ) {
+      return true;
+    }
+
+    if (
+      explainComment(ctx, {
+        style: "blockStart",
+        languageName: "C#",
+        commentText:
+          "This line starts a block comment. Everything inside the comment is ignored by C#.",
+      })
+    ) {
+      return true;
+    }
+
+    if (
+      explainComment(ctx, {
+        style: "blockMiddle",
+        languageName: "C#",
+        commentText:
+          "This line is part of a block comment, which is only for explanation or notes.",
+      })
+    ) {
+      return true;
+    }
+
+    if (
+      explainComment(ctx, {
+        style: "blockEnd",
+        languageName: "C#",
+        commentText:
+          "This line ends a block comment. The comment text is not run by C#.",
+      })
+    ) {
       return true;
     }
 
@@ -74,7 +123,11 @@ export const csharpProfile = {
       return true;
     }
 
-    if (/^(public|private|protected|internal)?\s*async\s+\w+\s+\w+\s*\(/.test(trimmed)) {
+    if (
+      /^(public|private|protected|internal)?\s*async\s+\w+\s+\w+\s*\(/.test(
+        trimmed
+      )
+    ) {
       add(
         lineNumber,
         line,
@@ -83,7 +136,16 @@ export const csharpProfile = {
       return true;
     }
 
-    if (/^(public|private|protected|internal)?\s*(static\s+)?[\w<>\[\]?]+\s+\w+\s*\([^)]*\)\s*\{?$/.test(trimmed)) {
+    if (
+      /^(public|private|protected|internal)?\s*(static\s+)?[\w<>\[\]?]+\s+\w+\s*\([^)]*\)\s*\{?$/.test(
+        trimmed
+      ) &&
+      !/^if\s*\(/.test(trimmed) &&
+      !/^for\s*\(/.test(trimmed) &&
+      !/^foreach\s*\(/.test(trimmed) &&
+      !/^while\s*\(/.test(trimmed) &&
+      !/^switch\s*\(/.test(trimmed)
+    ) {
       add(
         lineNumber,
         line,
@@ -102,15 +164,15 @@ export const csharpProfile = {
     }
 
     if (/^Console\.Write\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line prints text to the console."
-      );
+      add(lineNumber, line, "This line prints text to the console.");
       return true;
     }
 
-    if (/^(int|double|float|decimal|char|bool|string|var)\s+\w+\s*=\s*.+;/.test(trimmed)) {
+    if (
+      /^(int|double|float|decimal|char|bool|string|var)\s+\w+\s*=\s*.+;/.test(
+        trimmed
+      )
+    ) {
       add(
         lineNumber,
         line,
@@ -137,39 +199,19 @@ export const csharpProfile = {
       return true;
     }
 
-    if (/^if\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line checks a condition and runs the next block if the condition is true."
-      );
-      return true;
-    }
-
-    if (/^else\s+if\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line checks another condition if the earlier one was false."
-      );
-      return true;
-    }
-
-    if (/^else\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts the alternative block for when the earlier condition is false."
-      );
-      return true;
-    }
-
-    if (/^for\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a loop that repeats with a setup, condition, and update."
-      );
+    if (
+      explainConditionals(ctx, {
+        ifPattern: /^if\s*\(/,
+        elseIfPattern: /^else\s+if\s*\(/,
+        elsePattern: /^else\b/,
+        ifText:
+          "This line checks a condition and runs the next block if the condition is true.",
+        elseIfText:
+          "This line checks another condition if the earlier one was false.",
+        elseText:
+          "This line starts the alternative block for when the earlier condition is false.",
+      })
+    ) {
       return true;
     }
 
@@ -182,21 +224,19 @@ export const csharpProfile = {
       return true;
     }
 
-    if (/^while\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a loop that keeps running while the condition stays true."
-      );
-      return true;
-    }
-
-    if (/^do\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a do-while loop, which runs the block once before checking the condition."
-      );
+    if (
+      explainLoops(ctx, {
+        forPattern: /^for\s*\(/,
+        whilePattern: /^while\s*\(/,
+        doPattern: /^do\b/,
+        forText:
+          "This line starts a loop that repeats with a setup, condition, and update.",
+        whileText:
+          "This line starts a loop that keeps running while the condition stays true.",
+        doText:
+          "This line starts a do-while loop, which runs the block once before checking the condition.",
+      })
+    ) {
       return true;
     }
 
@@ -227,30 +267,17 @@ export const csharpProfile = {
       return true;
     }
 
-    if (/^return\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line ends the current method and returns a value if needed."
-      );
-      return true;
-    }
-
-    if (/^break\s*;?$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line stops the current loop or switch immediately."
-      );
-      return true;
-    }
-
-    if (/^continue\s*;?$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line skips the rest of the current loop iteration and moves to the next one."
-      );
+    if (
+      explainFlowKeywords(ctx, {
+        returnPattern: /^return\b/,
+        breakPattern: /^break\s*;?$/,
+        continuePattern: /^continue\s*;?$/,
+        returnText: "This line ends the current method and returns a value if needed.",
+        breakText: "This line stops the current loop or switch immediately.",
+        continueText:
+          "This line skips the rest of the current loop iteration and moves to the next one.",
+      })
+    ) {
       return true;
     }
 
@@ -290,37 +317,37 @@ export const csharpProfile = {
       return true;
     }
 
-    if (/^\w+\s*\([^)]*\)\s*;?$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line calls a method, which means it asks another block of code to run."
-      );
+    if (
+      explainFunctionCall(ctx, {
+        pattern: /^\w+\s*\([^)]*\)\s*;?$/,
+        explanation:
+          "This line calls a method, which means it asks another block of code to run.",
+      })
+    ) {
       return true;
     }
 
-    if (trimmed === "{") {
-      add(
-        lineNumber,
-        line,
-        "This brace opens a new block of code."
-      );
-      return true;
-    }
-
-    if (trimmed === "}") {
-      add(
-        lineNumber,
-        line,
-        "This brace closes the block of code above it."
-      );
+    if (
+      explainBraces(ctx, {
+        openPattern: /^\{$/,
+        closePattern: /^\}$/,
+        openText: "This brace opens a new block of code.",
+        closeText: "This brace closes the block of code above it.",
+      })
+    ) {
       return true;
     }
 
     add(
       lineNumber,
       line,
-      "This line is part of the C# program logic."
+      buildFallback({
+        languageName: "C#",
+        confidence,
+        defaultText: "This line is part of the C# program logic.",
+        lowConfidenceText:
+          "This looks like part of the C# logic, though the code may be incomplete or mixed with another style.",
+      })
     );
     return true;
   },
