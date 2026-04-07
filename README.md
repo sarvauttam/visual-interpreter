@@ -2,7 +2,9 @@
 
 ISeeCode is a browser-based visual learning interface that explains code as you type, helping beginners understand what their code actually does — not just whether it runs.
 
-🌐 Live Demo: https://github.com/sarvauttam/visual-interpreter
+Github : https://github.com/sarvauttam/visual-interpreter
+Live Demo: https://sarvauttam.github.io/visual-interpreter
+
 
 ---
 
