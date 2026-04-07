@@ -1,3 +1,13 @@
+import {
+  buildFallback,
+  createRuleContext,
+  explainComment,
+  explainConditionals,
+  explainFlowKeywords,
+  explainFunctionCall,
+  explainLoops,
+} from "./sharedRuleUtils.js";
+
 export const pythonProfile = {
   language: "Python",
   signals: [
@@ -15,18 +25,23 @@ export const pythonProfile = {
     { pattern: /^\s*True\b|^\s*False\b/m, weight: 2 },
   ],
   reason:
-    "This looks like Python code. ISeeCode can explain it, but it does not execute Python in the browser runner.",
+    "This looks like Python code.\nISeeCode can explain it, but it does not execute Python in the browser runner.",
 
-  explainLine(line, lineNumber, add) {
-    const trimmed = line.trim();
+  explainLine(line, lineNumber, add, options = {}) {
+    const ctx = createRuleContext(line, lineNumber, add);
+    const { trimmed } = ctx;
+    const confidence = options.confidence || "high";
+
     if (!trimmed) return false;
 
-    if (/^#/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This is a comment. It helps the reader understand the code, but Python does not run it."
-      );
+    if (
+      explainComment(ctx, {
+        style: "python",
+        languageName: "Python",
+        commentText:
+          "This is a comment. It helps the reader understand the code, but Python does not run it.",
+      })
+    ) {
       return true;
     }
 
@@ -67,101 +82,58 @@ export const pythonProfile = {
     }
 
     if (/^print\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line prints something to the screen."
-      );
+      add(lineNumber, line, "This line prints something to the screen.");
       return true;
     }
 
-    if (/^if\s+.+:\s*$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line checks a condition and runs the indented block only if the condition is true."
-      );
+    if (
+      explainConditionals(ctx, {
+        ifPattern: /^if\s+.+:\s*$/,
+        elseIfPattern: /^elif\s+.+:\s*$/,
+        elsePattern: /^else\s*:\s*$/,
+        ifText:
+          "This line checks a condition and runs the indented block only if the condition is true.",
+        elseIfText:
+          "This line checks another condition if the earlier condition was false.",
+        elseText:
+          "This line starts the fallback block that runs when earlier conditions were false.",
+      })
+    ) {
       return true;
     }
 
-    if (/^elif\s+.+:\s*$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line checks another condition if the earlier condition was false."
-      );
+    if (
+      explainLoops(ctx, {
+        forPattern: /^for\s+.+\s+in\s+.+:\s*$/,
+        whilePattern: /^while\s+.+:\s*$/,
+        forText:
+          "This line starts a loop that goes through items one by one.",
+        whileText:
+          "This line starts a loop that keeps running while the condition stays true.",
+      })
+    ) {
       return true;
     }
 
-    if (/^else\s*:\s*$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts the fallback block that runs when earlier conditions were false."
-      );
-      return true;
-    }
-
-    if (/^for\s+.+\s+in\s+.+:\s*$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a loop that goes through items one by one."
-      );
-      return true;
-    }
-
-    if (/^while\s+.+:\s*$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a loop that keeps running while the condition stays true."
-      );
-      return true;
-    }
-
-    if (/^return\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line ends the function and sends a value back."
-      );
-      return true;
-    }
-
-    if (/^break\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line stops the current loop immediately."
-      );
-      return true;
-    }
-
-    if (/^continue\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line skips the rest of the current loop iteration and moves to the next one."
-      );
-      return true;
-    }
-
-    if (/^pass\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line tells Python to do nothing here. It is often used as a placeholder."
-      );
+    if (
+      explainFlowKeywords(ctx, {
+        returnPattern: /^return\b/,
+        breakPattern: /^break\b/,
+        continuePattern: /^continue\b/,
+        passPattern: /^pass\b/,
+        returnText: "This line ends the function and sends a value back.",
+        breakText: "This line stops the current loop immediately.",
+        continueText:
+          "This line skips the rest of the current loop iteration and moves to the next one.",
+        passText:
+          "This line tells Python to do nothing here. It is often used as a placeholder.",
+      })
+    ) {
       return true;
     }
 
     if (/^raise\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line raises an error on purpose."
-      );
+      add(lineNumber, line, "This line raises an error on purpose.");
       return true;
     }
 
@@ -202,20 +174,17 @@ export const pythonProfile = {
     }
 
     if (/^\w+\s*=\s*.+/.test(trimmed) && !/==/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line stores a value in a variable."
-      );
+      add(lineNumber, line, "This line stores a value in a variable.");
       return true;
     }
 
-    if (/^\w+\s*\(.+\)$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line calls a function, which means it asks another block of code to run."
-      );
+    if (
+      explainFunctionCall(ctx, {
+        pattern: /^\w+\s*\(.+\)$/,
+        explanation:
+          "This line calls a function, which means it asks another block of code to run.",
+      })
+    ) {
       return true;
     }
 
@@ -249,7 +218,13 @@ export const pythonProfile = {
     add(
       lineNumber,
       line,
-      "This line is part of the Python program logic."
+      buildFallback({
+        languageName: "Python",
+        confidence,
+        defaultText: "This line is part of the Python program logic.",
+        lowConfidenceText:
+          "This looks like part of the Python program logic, though the code may be incomplete or mixed with another style.",
+      })
     );
     return true;
   },
