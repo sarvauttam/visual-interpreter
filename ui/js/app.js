@@ -265,7 +265,7 @@ function renderHistoryModal({
       title: "History",
       subtitle: "Recent runs saved in your browser",
       bodyHtml: `
-        <article class="history-card history-card--empty-state">
+        <article class="card card--dashed history-card history-card--empty-state">
           <h3>No saved runs yet</h3>
           <p>
             Once you run code, your recent attempts will appear here so you can reopen them later.
@@ -282,7 +282,7 @@ function renderHistoryModal({
     bodyHtml: `
       <div class="history-list">
         ${items.map((item) => `
-          <article class="history-card" data-history-id="${escapeHtml(item.id)}">
+          <article class="card history-card" data-history-id="${escapeHtml(item.id)}">
             <h3>${item.ok ? "Successful run" : "Run with issue"}</h3>
             <p class="history-meta">${escapeHtml(formatDate(item.createdAt))}</p>
             <div class="history-preview">${escapeHtml(item.preview || "(no preview)")}</div>

@@ -918,7 +918,7 @@ function renderActiveCard(entry) {
   if (entry.kind === "hint") {
     return `
       <article class="explanation-card explanation-card--hint explanation-card--active">
-        <div class="explanation-card__label">Current line in progress</div>
+        <div class="card card--interactive explanation-card__label">Current line in progress</div>
         <h3>Line ${entry.lineNumber}: ${escapeHtml(entry.title)}</h3>
         <div class="explanation-code-line">${escapeHtml(entry.line.trim() || "(empty)")}</div>
         <p>${escapeHtml(entry.body)}</p>
@@ -929,7 +929,7 @@ function renderActiveCard(entry) {
   if (entry.kind === "draft-error") {
     return `
       <article class="explanation-card explanation-card--draft-error explanation-card--active">
-        <div class="explanation-card__label explanation-card__label--draft-error">Temporary writing issue</div>
+        <div class="card card--interactive explanation-card__label explanation-card__label--draft-error">Temporary writing issue</div>
         <h3>Line ${entry.lineNumber}: ${escapeHtml(entry.title)}</h3>
         <div class="explanation-code-line">${escapeHtml(entry.line.trim() || "(empty)")}</div>
         <p>${escapeHtml(entry.body)}</p>
@@ -943,7 +943,7 @@ function renderActiveCard(entry) {
   if (entry.kind === "run-error") {
     return `
       <article class="explanation-card explanation-card--error explanation-card--active">
-        <div class="explanation-card__label explanation-card__label--error">Run issue</div>
+        <div class="card card--interactive explanation-card__label explanation-card__label--error">Run issue</div>
         <h3>${escapeHtml(entry.title)}</h3>
         <p>${escapeHtml(entry.summary)}</p>
         ${entry.reason ? `<p class="explanation-meta"><strong>Why it did not work:</strong> ${escapeHtml(entry.reason)}</p>` : ""}
@@ -975,7 +975,7 @@ function renderActiveCard(entry) {
 
   return `
     <article class="explanation-card explanation-card--line explanation-card--active${extraClass}">
-      <div class="explanation-card__label${extraLabelClass}">${label}</div>
+      <div class="card card--interactive explanation-card__label${extraLabelClass}">${label}</div>
       <h3>Line ${entry.lineNumber}: ${escapeHtml(entry.title)}</h3>
       <div class="explanation-code-line">${escapeHtml(entry.line.trim())}</div>
       <p>${escapeHtml(entry.summary)}</p>
