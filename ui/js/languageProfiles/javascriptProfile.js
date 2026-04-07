@@ -306,17 +306,17 @@ export const javascriptProfile = {
       return true;
     }
 
-    add(
-      lineNumber,
-      line,
-      buildFallback({
-        languageName: "JavaScript",
-        confidence,
-        defaultText: "This line is part of the JavaScript program logic.",
-        lowConfidenceText:
-          "This looks like part of the JavaScript logic, though the code may be incomplete or mixed with another style.",
-      })
-    );
+      add(
+        lineNumber,
+        line,
+        buildFallback({
+          languageName: "JavaScript",
+          confidence,
+          isMixed: !!options.isMixed,
+          isPartialSource: !!options.isPartialSource,
+          subject: "JavaScript program logic",
+        })
+      );
     return true;
   },
 };

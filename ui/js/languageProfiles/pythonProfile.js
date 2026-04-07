@@ -215,17 +215,17 @@ export const pythonProfile = {
       return true;
     }
 
-    add(
-      lineNumber,
-      line,
-      buildFallback({
-        languageName: "Python",
-        confidence,
-        defaultText: "This line is part of the Python program logic.",
-        lowConfidenceText:
-          "This looks like part of the Python program logic, though the code may be incomplete or mixed with another style.",
-      })
-    );
+      add(
+        lineNumber,
+        line,
+        buildFallback({
+          languageName: "Python",
+          confidence,
+          isMixed: !!options.isMixed,
+          isPartialSource: !!options.isPartialSource,
+          subject: "Python program logic",
+        })
+      );
     return true;
   },
 };

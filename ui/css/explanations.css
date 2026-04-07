@@ -302,3 +302,61 @@
 .panel-subtitle {
   text-wrap: pretty;
 }
+
+.explanation-step__text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #2c3e50;
+  margin-top: 6px;
+}
+
+.explanation-step__meta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.explanation-step__code {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 8px 0;
+  font-size: 0.9rem;
+  font-family: 'Fira Code', monospace;
+}
+
+.explanation-step__text strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.explanation-step.card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  margin-bottom: 12px;
+}
+
+.explanation-step__count {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-top: 6px;
+}
+
+.explanation-step__meta {
+  margin-bottom: 4px;
+}
+
+.explanation-step__code {
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+.explanation-step__text {
+  margin-top: 6px;
+}

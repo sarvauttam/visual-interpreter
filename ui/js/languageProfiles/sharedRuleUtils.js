@@ -22,7 +22,12 @@ export function isLikelyIncompleteLine(line) {
   if (!trimmed) return false;
 
   if (/[=+\-*/%<>!&|?:.,([{]$/.test(trimmed)) return true;
-  if (/^(if|elif|else if|for|while|function|def|class|try|catch|except|with)\b.*[^:;{})\]]$/.test(trimmed)) {
+
+  if (
+    /^(if|elif|else if|for|while|function|def|class|try|catch|except|with)\b.*[^:;{})\]]$/.test(
+      trimmed
+    )
+  ) {
     return true;
   }
 
@@ -182,21 +187,28 @@ export function explainFunctionCall(ctx, options = {}) {
 
 export function buildFallback(options = {}) {
   const {
-    languageName = "this",
+    languageName = "this language",
     confidence = "high",
     isMixed = false,
     isPartialSource = false,
-    defaultText = `This line is part of the ${languageName} program logic.`,
-    mediumConfidenceText = `This appears to be part of the ${languageName} program logic.`,
-    lowConfidenceText = `This line appears to be part of the program logic, but the code may be incomplete or mixed.`,
-    mixedText = `This looks like part of the ${languageName} logic, but the snippet may mix more than one coding style.`,
-    partialText = `This appears to be part of the ${languageName} logic, though the snippet may still be incomplete.`,
+    subject = `${languageName} program logic`,
   } = options;
 
-  if (confidence === "low") return lowConfidenceText;
-  if (confidence === "medium") return mediumConfidenceText;
-  if (isMixed) return mixedText;
-  if (isPartialSource) return partialText;
+  if (confidence === "low") {
+    return `This looks like part of the ${subject}, but the snippet may be mixed, uncertain, or incomplete.`;
+  }
 
-  return defaultText;
+  if (isMixed) {
+    return `This appears to be part of the ${subject}, though some lines may belong to another coding style.`;
+  }
+
+  if (isPartialSource) {
+    return `This appears to be part of the ${subject}, though the snippet may still be incomplete.`;
+  }
+
+  if (confidence === "medium") {
+    return `This appears to be part of the ${subject}.`;
+  }
+
+  return `This line is part of the ${subject}.`;
 }

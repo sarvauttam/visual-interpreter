@@ -338,17 +338,17 @@ export const csharpProfile = {
       return true;
     }
 
-    add(
-      lineNumber,
-      line,
-      buildFallback({
-        languageName: "C#",
-        confidence,
-        defaultText: "This line is part of the C# program logic.",
-        lowConfidenceText:
-          "This looks like part of the C# logic, though the code may be incomplete or mixed with another style.",
-      })
-    );
+      add(
+        lineNumber,
+        line,
+        buildFallback({
+          languageName: "C#",
+          confidence,
+          isMixed: !!options.isMixed,
+          isPartialSource: !!options.isPartialSource,
+          subject: "C# program logic",
+        })
+      );
     return true;
   },
 };
