@@ -1,0 +1,88 @@
+@media (max-width: 1180px) {
+  .workspace-layout {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .left-column {
+    grid-template-rows: auto auto;
+  }
+
+  .explanation-panel {
+    min-height: 28rem;
+    max-height: none;
+  }
+
+  .code-input {
+    min-height: 22rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .topbar-btn {
+    white-space: normal;
+  }
+
+  .panel-actions {
+    width: 100%;
+  }
+
+  .workspace-layout,
+  .left-column {
+    gap: 0.875rem;
+  }
+
+  .explanation-panel {
+    min-height: 24rem;
+    max-height: none;
+  }
+
+  .panel {
+    padding: 0.95rem;
+  }
+
+  .panel-header {
+    margin-bottom: 0.9rem;
+  }
+
+  .code-input {
+    padding: 0.9rem;
+  }
+
+  .output-content,
+  .explanation-card,
+  .compact-explanation-card__summary,
+  .compact-explanation-card__body {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+
+  .font-size-control {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .toolbar-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .primary-btn,
+  .secondary-btn {
+    width: 100%;
+  }
+
+  .toolbar-btn {
+    flex: 1 1 3rem;
+  }
+
+  .modal-card {
+    padding: 0.9rem;
+  }
+}

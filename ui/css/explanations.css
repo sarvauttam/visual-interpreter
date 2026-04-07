@@ -1,0 +1,304 @@
+.explanation-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  scrollbar-gutter: stable;
+}
+
+.empty-state-card {
+  border-style: dashed;
+  min-width: 0;
+}
+
+.empty-state-card h3 {
+  margin: 0 0 0.5rem;
+  line-height: 1.25;
+}
+
+.empty-state-card p {
+  margin: 0.625rem 0 0;
+  line-height: 1.6;
+}
+
+.explanation-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.explanation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 4px;
+}
+
+.explanation-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.explanation-card h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.explanation-card p {
+  margin: 0.5rem 0 0;
+  line-height: 1.68;
+  color: var(--text);
+}
+
+.explanation-card__label {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #eef4ff;
+  color: var(--primary-dark);
+}
+
+.explanation-card--hint {
+  border-style: dashed;
+  background: #fffdf7;
+}
+
+.explanation-card--hint .explanation-card__label {
+  background: #fff3cd;
+  color: #8a6700;
+}
+
+.explanation-card--line {
+  background: #f9fbff;
+}
+
+.explanation-card--empty {
+  border-style: dashed;
+}
+
+.explanation-card--run {
+  border-color: #cfe0ff;
+  background: #f7fbff;
+}
+
+.explanation-card__label--run {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.explanation-card--error {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.explanation-card__label--error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.explanation-card--draft-error {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.explanation-card__label--draft-error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.explanation-card--active {
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.08);
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.explanation-code-line {
+  margin: 0.5rem 0 0;
+  padding: 0.72rem 0.82rem;
+  border-radius: 0.78rem;
+  background: #f4f7fb;
+  border: 1px solid var(--border);
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.explanation-meta {
+  margin: 0.6rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.explanation-focus-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 100%;
+}
+
+.explanation-active-section {
+  flex: 0 0 auto;
+}
+
+.explanation-history-section {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.explanation-history-section__header h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.explanation-history-section__header p {
+  margin: 0.35rem 0 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+  font-size: 0.92rem;
+}
+
+.compact-explanation-list {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.compact-explanation-card {
+  border: 1px solid var(--border);
+  border-radius: 0.9rem;
+  background: #fbfdff;
+  padding: 0;
+  overflow: hidden;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.compact-explanation-card[open] {
+  background: #ffffff;
+}
+
+.compact-explanation-card:hover {
+  background: #f8fbff;
+  border-color: #c7d8f5;
+}
+.compact-explanation-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.compact-explanation-card__label {
+  display: inline-block;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: var(--primary-dark);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.compact-explanation-card__line {
+  color: var(--text-soft);
+  font-size: 0.84rem;
+}
+
+.compact-explanation-card__summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0.85rem;
+}
+
+.compact-explanation-card__summary::-webkit-details-marker {
+  display: none;
+}
+
+.compact-explanation-card__summary:hover {
+  background: #f8fbff;
+}
+
+.compact-explanation-card__body {
+  padding: 0 0.85rem 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.compact-explanation-card__code {
+  margin-top: 0.58rem;
+  padding: 0.58rem 0.72rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--border);
+  background: #f4f7fb;
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.compact-explanation-card__text {
+  margin: 0.58rem 0 0;
+  color: var(--text-soft);
+  line-height: 1.58;
+  font-size: 0.92rem;
+}
+
+.explanation-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.explanation-line {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.explanation-code {
+  font-family: monospace;
+  font-size: 0.9rem;
+  background: #f1f5f9;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: #1e293b;
+  display: inline-block;
+}
+
+.explanation-body {
+  font-size: 0.95rem;
+  color: #0f172a;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.explanation-footer {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.explanation-card p,
+.compact-explanation-card__text,
+.explanation-meta,
+.panel-subtitle {
+  text-wrap: pretty;
+}

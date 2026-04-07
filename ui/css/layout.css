@@ -1,0 +1,177 @@
+.app-shell {
+  width: min(100%, var(--shell-max-width));
+  margin: 0 auto;
+  padding: clamp(0.875rem, 1.5vw, 1.25rem);
+  display: grid;
+  gap: clamp(0.875rem, 1.5vw, 1.25rem);
+}
+
+.topbar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  padding: clamp(0.9rem, 1.4vw, 1.22rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.topbar-left,
+.topbar-right {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.topbar-right {
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+}
+
+.brand-mark {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.875rem;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: var(--primary-dark);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.brand-text {
+  min-width: 0;
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: clamp(1.1rem, 1.1rem + 0.3vw, 1.35rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.brand-text p {
+  margin: 0.25rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.topbar-btn {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.62rem 0.94rem;
+  transition: 0.18s ease;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  font-size: 0.95rem;
+}
+
+.topbar-btn:hover {
+  border-color: var(--border-strong);
+  background: #f2f7ff;
+}
+
+.topbar-btn--account {
+  border-color: #cfe0ff;
+  background: #ebf3ff;
+  color: var(--primary-dark);
+}
+
+.topbar-btn.has-history {
+  border-color: #cfe0ff;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.workspace-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.95fr);
+  gap: clamp(0.875rem, 1.5vw, 1.25rem);
+  align-items: stretch;
+  min-width: 0;
+  min-height: var(--workspace-min-height);
+}
+
+.left-column {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: clamp(0.875rem, 1.5vw, 1.25rem);
+  min-width: 0;
+  min-height: 0;
+}
+
+.code-panel,
+.explanation-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.code-panel {
+  min-height: 0;
+}
+
+.explanation-panel {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.2rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.panel-header > div:first-child {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.12rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.panel-subtitle {
+  margin: 0.38rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  max-width: 62ch;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  align-items: center;
+}

@@ -44,6 +44,32 @@ function renderProgramOutput(container, stdoutText) {
   container.textContent = normalized;
 }
 
+function renderExplainOnlyOutput(container, languageLabel, reason, confidence = "high") {
+  if (!container) return;
+
+  const confidenceText =
+    confidence === "high"
+      ? "ISeeCode is confident about this language match."
+      : confidence === "medium"
+        ? "ISeeCode is fairly confident about this language match."
+        : "ISeeCode is making a best-effort language guess here.";
+
+  container.innerHTML = `
+    <div class="output-empty-success">
+      <h3>Explain-only mode</h3>
+      <p>
+        This code looks like <strong>${languageLabel}</strong>, so ISeeCode will explain it without trying to run it.
+      </p>
+      <p class="muted">
+        ${reason}
+      </p>
+      <p class="muted">
+        ${confidenceText}
+      </p>
+    </div>
+  `;
+}
+
 function setRunButtonBusyState(button, isBusy) {
   if (!button) return;
 
@@ -488,5 +514,6 @@ async function runSource(source) {
     init,
     runSource,
     renderClearedOutput,
+    renderExplainOnlyOutput,
   };
 }

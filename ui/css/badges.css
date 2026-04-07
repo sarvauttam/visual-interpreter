@@ -1,0 +1,11 @@
+.source-mode-badge {
+  margin: 0 0 12px;
+}
+
+.output-mode-badge {
+  flex-shrink: 0;
+}
+
+.explanation-mode-badge {
+  flex-shrink: 0;
+}

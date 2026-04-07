@@ -25,5 +25,9 @@ export function getDom() {
     modalSubtitle: document.getElementById("modalSubtitle"),
     modalBody: document.getElementById("modalBody"),
     modalCloseBtn: document.getElementById("modalCloseBtn"),
+
+    sourceModeBadge: document.getElementById("sourceModeBadge"),
+    outputModeBadge: document.getElementById("outputModeBadge"),
+    explanationModeBadge: document.getElementById("explanationModeBadge"),
   };
 }

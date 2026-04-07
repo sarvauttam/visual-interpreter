@@ -5,6 +5,11 @@ import {
   renderLiveExplanationPreview,
   renderRunExplanationPreview,
 } from "./explanations.js";
+import {
+  detectSourceProfile,
+  buildExplainOnlyHistoryMessage,
+  renderExplainOnlyExplanation,
+} from "./explainOnly.js";
 import { createRunner } from "./runner.js";
 import { createHistoryController } from "./history.js";
 
@@ -38,6 +43,115 @@ function renderInlineNote(container, message, variant = "info") {
   window.setTimeout(() => {
     note.remove();
   }, 2500);
+}
+
+function getModeBadgeVariant(profile) {
+  if (!profile || profile.mode === "empty") {
+    return "neutral";
+  }
+
+  if (profile.mode === "run") {
+    return "run";
+  }
+
+  return "explain";
+}
+
+function setModeBadgeState(element, baseClassName, text, variant) {
+  if (!element) return;
+
+  element.className = `mode-badge ${baseClassName} mode-badge--${variant}`;
+  element.textContent = text;
+}
+
+function getSourceBadgeText(profile) {
+  if (!profile || profile.mode === "empty") {
+    return "Waiting for code";
+  }
+
+  if (profile.mode === "run") {
+    return "Run mode: simplified teaching language";
+  }
+
+  const confidenceText =
+    profile.confidence === "high"
+      ? ""
+      : profile.confidence === "medium"
+        ? " (best match)"
+        : " (tentative)";
+
+  return `Explain-only mode: ${profile.language}${confidenceText}`;
+}
+
+function getPanelBadgeText(profile) {
+  if (!profile || profile.mode === "empty") {
+    return "Waiting";
+  }
+
+  if (profile.mode === "run") {
+    return "Run mode";
+  }
+
+  const confidenceText =
+    profile.confidence === "high"
+      ? ""
+      : profile.confidence === "medium"
+        ? " · best match"
+        : " · tentative";
+
+  return `Explain-only · ${profile.language}${confidenceText}`;
+}
+
+function renderSourceModeBadge(dom, profile) {
+  setModeBadgeState(
+    dom.sourceModeBadge,
+    "source-mode-badge",
+    getSourceBadgeText(profile),
+    getModeBadgeVariant(profile)
+  );
+}
+
+function renderOutputModeBadge(dom, profile) {
+  setModeBadgeState(
+    dom.outputModeBadge,
+    "output-mode-badge",
+    getPanelBadgeText(profile),
+    getModeBadgeVariant(profile)
+  );
+}
+
+function renderExplanationModeBadge(dom, profile) {
+  setModeBadgeState(
+    dom.explanationModeBadge,
+    "explanation-mode-badge",
+    getPanelBadgeText(profile),
+    getModeBadgeVariant(profile)
+  );
+}
+
+function renderAllModeBadges(dom, profile) {
+  renderSourceModeBadge(dom, profile);
+  renderOutputModeBadge(dom, profile);
+  renderExplanationModeBadge(dom, profile);
+}
+
+function buildSourceModeNote(profile) {
+  if (!profile || profile.mode === "empty") {
+    return "Waiting for code.";
+  }
+
+  if (profile.mode === "run") {
+    return "Detected simplified teaching language. This code can run in the browser interpreter.";
+  }
+
+  const confidenceText =
+    profile.confidence === "high"
+      ? ""
+      : profile.confidence === "medium"
+        ? " Best match."
+        : " Tentative match.";
+
+  return `Detected ${profile.language}. This code will be explained without execution.${confidenceText}`;
 }
 
 function createModalController(dom) {
@@ -196,8 +310,18 @@ function renderHistoryModal({
       if (!item) return;
 
       editor.setCode(item.source);
+
+      const profile = detectSourceProfile(item.source);
+      renderAllModeBadges(dom, profile);
       renderLiveExplanationPreview(dom.explanationContent, item.source);
+
       modal.closeModal();
+
+      renderInlineNote(
+        dom.explanationContent,
+        `Restored code from history. ${buildSourceModeNote(profile)}`,
+        "info"
+      );
     });
   });
 
@@ -248,10 +372,14 @@ function bindUpload(dom, editor) {
     try {
       const text = await file.text();
       editor.setCode(text);
+
+      const profile = detectSourceProfile(text);
+      renderAllModeBadges(dom, profile);
       renderLiveExplanationPreview(dom.explanationContent, text);
+
       renderInlineNote(
         dom.explanationContent,
-        `Loaded "${file.name}" into the editor.`,
+        `Loaded "${file.name}" into the editor. ${buildSourceModeNote(profile)}`,
         "success"
       );
     } catch (error) {
@@ -270,6 +398,9 @@ function bindUpload(dom, editor) {
 function bindEditorActions(dom, editor, runner, history) {
   dom.codeInput?.addEventListener("input", () => {
     const source = editor.getCode();
+    const profile = detectSourceProfile(source);
+
+    renderAllModeBadges(dom, profile);
     renderLiveExplanationPreview(dom.explanationContent, source);
   });
 
@@ -279,11 +410,12 @@ function bindEditorActions(dom, editor, runner, history) {
     editor.clearEditor();
     runner.renderClearedOutput();
     renderEmptyExplanationState(dom.explanationContent);
+    renderAllModeBadges(dom, { mode: "empty" });
 
     if (hadCode) {
       renderInlineNote(
         dom.explanationContent,
-        "The editor has been cleared.",
+        "The editor has been cleared. Waiting for code.",
         "info"
       );
     }
@@ -291,6 +423,51 @@ function bindEditorActions(dom, editor, runner, history) {
 
   dom.runBtn?.addEventListener("click", async () => {
     const source = editor.getCode();
+    const profile = detectSourceProfile(source);
+
+    if (!source.trim()) {
+      runner.renderClearedOutput();
+      renderEmptyExplanationState(dom.explanationContent);
+      renderInlineNote(
+        dom.explanationContent,
+        "Write some code first before running or explaining it.",
+        "warning"
+      );
+      return;
+    }
+
+    if (profile.mode === "explain-only") {
+      renderExplainOnlyExplanation(dom.explanationContent, source, profile);
+
+      runner.renderExplainOnlyOutput(
+        dom.outputContent,
+        profile.language,
+        profile.reason,
+        profile.confidence
+      );
+      renderOutputModeBadge(dom, profile);
+      renderExplanationModeBadge(dom, profile);
+
+      renderInlineNote(
+        dom.explanationContent,
+        `Switched to explain-only mode for ${profile.language}.`,
+        "info"
+      );
+
+      history.saveRun({
+        source,
+        stdoutText: buildExplainOnlyHistoryMessage(profile),
+        ok: true,
+        errorText: "",
+      });
+
+      updateHistoryButtonState(dom, history);
+      return;
+    }
+
+    renderOutputModeBadge(dom, profile);
+    renderExplanationModeBadge(dom, profile);
+
     const runResult = await runner.runSource(source);
 
     renderRunExplanationPreview(dom.explanationContent, source, runResult);
@@ -323,6 +500,7 @@ function initApp() {
 
   renderEmptyExplanationState(dom.explanationContent);
   runner.renderClearedOutput();
+  renderAllModeBadges(dom, { mode: "empty" });
   updateHistoryButtonState(dom, history);
 
   bindTopbarActions(dom, modal, history, editor);

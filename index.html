@@ -82,6 +82,9 @@
 
           <div class="editor-area">
             <label for="codeInput" class="sr-only">Code input</label>
+              <div id="sourceModeBadge" class="mode-badge source-mode-badge mode-badge--neutral">
+                Waiting for code
+              </div>
             <textarea
               id="codeInput"
               class="code-input"
@@ -102,12 +105,15 @@ int main() {
           <div class="panel-header">
             <div>
               <h2 id="outputPanelTitle">Output</h2>
+                <span id="outputModeBadge" class="mode-badge output-mode-badge mode-badge--neutral">
+                  Waiting
+                </span>
               <p class="panel-subtitle">This is where your program shows its result after you click Run.</p>
             </div>
           </div>
 
           <div class="output-content" id="outputContent">
-            <div class="output-placeholder">
+            <div class="card card--dashed output-placeholder">
               Nothing has been run yet.
             </div>
           </div>
@@ -118,12 +124,15 @@ int main() {
         <div class="panel-header">
           <div>
             <h2 id="explanationPanelTitle">Explanations</h2>
+              <span id="explanationModeBadge" class="mode-badge explanation-mode-badge mode-badge--neutral">
+                Waiting
+              </span>
             <p class="panel-subtitle">Friendly guidance will appear here as you type and run your code.</p>
           </div>
         </div>
 
         <div class="explanation-content" id="explanationContent">
-          <div class="empty-state-card">
+          <div class="card card--dashed empty-state-card">
             <h3>Welcome to ISeeCode</h3>
             <p>
               Start typing code on the left. As your lines become complete,

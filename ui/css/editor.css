@@ -1,0 +1,137 @@
+.editor-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.875rem;
+  min-width: 0;
+}
+
+.toolbar-btn {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  transition: 0.18s ease;
+  background: var(--surface-soft);
+  min-width: 2.75rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  font-weight: 500;
+  flex: 0 0 auto;
+  color: var(--text-soft);
+}
+
+.toolbar-btn:hover {
+  background: #f8fbff;
+  border-color: var(--border-strong);
+}
+
+.toolbar-btn strong,
+.toolbar-btn em,
+.toolbar-btn span {
+  display: inline-block;
+  pointer-events: none;
+}
+
+.toolbar-underline {
+  text-decoration: underline;
+}
+
+.toolbar-btn.is-active {
+  background: #eaf2ff;
+  border-color: #9ec2ff;
+  color: var(--primary-dark);
+}
+
+.editor-area {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.code-input {
+  width: 100%;
+  min-height: var(--panel-min-height);
+  height: 100%;
+  flex: 1 1 auto;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #fcfdff;
+  color: var(--text);
+  padding: 1rem 1rem 1.05rem;
+  line-height: 1.68;
+  font-size: var(--editor-font-size);
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  outline: none;
+  overflow: auto;
+  caret-color: var(--primary-dark);
+}
+
+.code-input:focus {
+  border-color: #9ec2ff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+}
+
+.code-input.is-bold {
+  font-weight: 700;
+}
+
+.code-input.is-italic {
+  font-style: italic;
+}
+
+.code-input.is-underline {
+  text-decoration: underline;
+}
+
+.font-size-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: #fbfdff;
+}
+
+.font-size-input {
+  width: 3.6rem;
+  height: 2.4rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: white;
+  text-align: center;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.font-size-input:focus {
+  outline: none;
+  border-color: #9ec2ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 2rem;
+  background: var(--border);
+  align-self: center;
+}
+
+.toolbar-btn--soft {
+  min-width: 2.25rem;
+  padding: 0 0.65rem;
+}
+
+.toolbar-btn--format {
+  min-width: 2.5rem;
+  color: var(--text);
+  background: white;
+}
+
+.toolbar-btn--format.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
