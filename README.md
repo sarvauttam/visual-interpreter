@@ -1,283 +1,227 @@
-# Visual Interpreter for Program Execution
+# 🧠 ISeeCode — Learn Code While You Write It
 
-A lightweight educational interpreter that visualizes program execution step-by-step in the browser.
-The system exposes runtime execution state (variables, control flow, and function calls) through a trace-driven visualization interface designed to help beginners understand how programs actually run.
+ISeeCode is a browser-based visual learning interface that explains code as you type, helping beginners understand what their code actually does — not just whether it runs.
 
-The interpreter itself is implemented in **C++**, compiled to **WebAssembly**, and executed entirely inside the browser.
-
----
-
-# Live Demo
-
-Use the interpreter directly in your browser:
-
-```
-https://sarvauttam.github.io/visual-interpreter/
-```
-
-No installation required.
+🌐 Live Demo: https://github.com/sarvauttam/visual-interpreter
 
 ---
 
-# Project Overview
+# 🚀 What is ISeeCode?
 
-This project investigates how **runtime execution visualization** can improve the transparency of program execution for learners.
+Most tools focus on:
 
-Instead of treating interpreters as a “black box”, the system exposes internal execution events such as:
+* running code
+* or highlighting syntax
 
-* variable creation
-* variable updates
-* function calls
-* function returns
-* branch decisions
-* loop iterations
-* program output
+ISeeCode focuses on something different:
 
-These events are emitted as a structured **execution trace** and rendered in a browser interface.
+> **Understanding code in real time.**
 
----
+As you type or upload code, the system:
 
-# System Architecture
-
-```
-Source Code
-     ↓
-Lexer
-     ↓
-Parser
-     ↓
-Abstract Syntax Tree
-     ↓
-Evaluator
-     ↓
-TraceEmitter
-     ↓
-JSON Trace
-     ↓
-Browser Visualization UI
-```
+* analyzes it
+* detects its structure and language
+* generates clear, human-readable explanations
 
 ---
 
-# Deployment Model
+# ✨ Core Features
 
-The interpreter runs entirely in the browser using WebAssembly.
+### 🧠 Live Explanation Engine
 
-```
-Browser
-   │
-   │ WebAssembly (vi_wasm.wasm)
-   │
-Interpreter Runtime (C++)
-   │
-TraceEmitter
-   │
-JSONL Trace
-   │
-Visualization UI
-```
-
-Advantages:
-
-* no backend server required
-* globally accessible via static hosting
-* browser sandbox security
-* deterministic execution
-* low infrastructure cost
+* Explains code line-by-line as you type
+* Avoids guessing on incomplete lines
+* Provides hints instead of misleading output
 
 ---
 
-# Visualization Interface
+### 🔄 Dual Mode System (Key Innovation)
 
-The browser UI provides several panels for exploring execution.
+#### ▶️ Run Mode
 
-### Code Panel
+* Executes a simplified teaching language in the browser (via WebAssembly)
+* Produces real output
+* Adds runtime-aware explanations
 
-Displays the source program with the currently executing line highlighted.
+#### 📖 Explain-Only Mode
 
-### Changes Panel
-
-Shows explanations of what happens at each step of execution.
-
-### Variables Panel
-
-Displays variable values and their scope.
-
-### Call Stack Panel
-
-Shows active function frames.
-
-### Console
-
-Displays program output.
+* Automatically activates for real-world code (C++, Python, JavaScript, C#)
+* Focuses on understanding, not execution
+* Works even with incomplete or non-runnable code
 
 ---
 
-# Execution Controls
+### 🌍 Multi-Language Awareness
 
-The interface supports interactive exploration of execution.
+Supports detection and explanation for:
 
-```
-Prev
-Play / Pause
-Next
-Speed slider
-Timeline scrubbing
-```
+* C++
+* Python
+* JavaScript
+* C#
 
-Keyboard shortcuts:
-
-```
-→ Step forward
-← Step backward
-Space Play / Pause
-Home Start of execution
-End End of execution
-```
+(Execution is limited to the internal teaching language)
 
 ---
 
-# Interpreter Implementation
+### 📁 File Upload Support
 
-The interpreter is implemented in C++ and consists of several core components.
-
-| Component    | Responsibility            |
-| ------------ | ------------------------- |
-| Lexer        | tokenizes source code     |
-| Parser       | constructs AST            |
-| Evaluator    | executes AST              |
-| Environment  | manages variable state    |
-| TraceEmitter | produces execution events |
-| JSONWriter   | serializes events         |
+* Upload code files directly
+* Automatically detects language
+* Switches to the appropriate mode
 
 ---
 
-# Trace Event Model
+### 🕘 History System
 
-Each execution step produces a structured event.
-
-Example:
-
-```json
-{
- "type": "VarWrite",
- "loc": { "line": 3, "col": 5 },
- "frame": { "name": "f", "depth": 1 },
- "name": "x",
- "old": 5,
- "new": 6
-}
-```
-
-Events are written in **JSONL format** to support efficient streaming.
+* Saves previous runs locally
+* Restore past code instantly
+* Keeps learning flow uninterrupted
 
 ---
 
-# Building the Interpreter
+### 🎯 Clean, Modular UI
 
-## Native Build
+* Structured panels for:
 
-```
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-
----
-
-## WebAssembly Build
-
-Requires **Emscripten**.
-
-```
-mkdir build-wasm
-cd build-wasm
-emcmake cmake ..
-cmake --build . --target vi_wasm
-```
-
-This produces:
-
-```
-vi_wasm.js
-vi_wasm.wasm
-```
-
-These files power the browser execution environment.
+  * Editor
+  * Explanation
+  * Output
+* Synchronized mode indicators across UI
+* Built with a scalable CSS + JS architecture
 
 ---
 
-# Running the UI Locally
+# ⚙️ How It Works
 
-Start a local server:
+1. Write or upload code
 
-```
-python -m http.server 8000
-```
+2. The system analyzes the input
 
-Then open:
+3. It detects:
 
-```
-http://localhost:8000
-```
+   * language
+   * completeness
+   * intent
 
----
+4. It chooses a mode:
 
-# Testing
+   * Run Mode → executes code
+   * Explain-Only Mode → explains code
 
-Unit tests cover:
+5. The UI updates:
 
-* lexer
-* parser
-* runtime
-* trace generation
-* WebAssembly runner
-
-Run tests:
-
-```
-ctest --test-dir build -C Debug
-```
+   * explanations panel
+   * output panel
+   * mode badges
 
 ---
 
-# Repository Structure
+# 🏗️ Architecture Overview
 
-```
-visual-interpreter
-│
-├── index.html
-├── src
-├── tests
-├── ui
-│   ├── css
-│   └── js
-├── docs
-└── bridge
-```
+### Frontend (Modular JS)
+
+* `app.js` → orchestration layer
+* `editor.js` → editor behavior & input handling
+* `runner.js` → WASM execution engine
+* `explanations.js` → explanation pipeline
+* `explainOnly.js` → language-aware explanation mode
+* `history.js` → local storage system
+* `dom.js` → DOM references
 
 ---
 
-# Research Context
+### UI System
 
-This project was developed as part of a dissertation investigating:
+* Modular CSS structure:
 
-* educational interpreters
-* notional machines
-* execution visualization
-* trace-driven program understanding
-
-The work explores whether exposing runtime execution events improves learners’ understanding of program behavior.
-
----
-
-# License
-
-MIT License
+  * `base.css` → global styles
+  * `layout.css` → structure
+  * `editor.css` → editor
+  * `explanations.css` → explanation UI
+  * `output.css` → output UI
+  * `history.css` → history UI
+  * `modals.css` → modal system
+  * `components.css` → reusable UI components
+  * `badges.css` → mode indicators
 
 ---
 
-# Author
+### Execution Layer
 
-Uttam Torry
+* WebAssembly-based interpreter
+* Designed for a simplified teaching language
+* Not a full C++ runtime
+
+---
+
+# ⚠️ Limitations
+
+* The interpreter does **not support full C++ or other real languages**
+* Explain-only mode does **not execute code**
+* Language detection is heuristic-based
+* WASM execution is limited to a controlled syntax
+
+---
+
+# 🔮 Future Improvements
+
+* Smarter language detection
+* More advanced explanation engine
+* Step-by-step execution visualization
+* Better runtime tracing
+* User accounts and saved work
+* Expanded language support
+
+---
+
+# 💡 Why This Project Matters
+
+Beginners often struggle because:
+
+* code runs, but they don’t understand *why*
+* errors appear without clear meaning
+* tutorials don’t match their own code
+
+ISeeCode bridges that gap:
+
+> It turns code into explanations — in real time.
+
+---
+
+# 🧪 Project Status
+
+* ✅ UI architecture stabilized
+* ✅ Explain-only mode implemented
+* ✅ Multi-language detection working
+* ✅ Modular CSS system implemented
+* ⚠️ WASM runtime limited to teaching subset
+* 🚧 Ongoing improvements in explanation quality
+
+---
+
+# 📸 Demo
+
+<img width="921" height="641" alt="image" src="https://github.com/user-attachments/assets/a7fedc01-9e2b-4e7e-9245-32bc4e480f32" />
+<img width="627" height="812" alt="image" src="https://github.com/user-attachments/assets/7f9dfa5c-9322-4b02-a638-047251ddf45a" />
+<img width="636" height="376" alt="image" src="https://github.com/user-attachments/assets/fbd79428-abe4-47bb-9121-cf662e4075e5" />
+<img width="1306" height="836" alt="image" src="https://github.com/user-attachments/assets/286cdb88-3ec4-4708-9550-3c382015435e" />
+
+
+
+
+---
+
+# 📬 Feedback
+
+If you have suggestions, ideas, or want to build on this:
+
+👉 Open an issue or fork the repo.
+
+---
+
+# 🧠 Final Note
+
+This is not just a code runner.
+
+It is an attempt to rethink how people **learn programming while writing code**.
