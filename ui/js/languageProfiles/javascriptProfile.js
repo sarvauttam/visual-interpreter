@@ -1,3 +1,14 @@
+import {
+  buildFallback,
+  createRuleContext,
+  explainBraces,
+  explainComment,
+  explainConditionals,
+  explainFlowKeywords,
+  explainFunctionCall,
+  explainLoops,
+} from "./sharedRuleUtils.js";
+
 export const javascriptProfile = {
   language: "JavaScript",
   signals: [
@@ -15,18 +26,56 @@ export const javascriptProfile = {
     { pattern: /\bawait\b/, weight: 3 },
   ],
   reason:
-    "This looks like JavaScript. ISeeCode can explain it, but it does not execute JavaScript in the current browser runner.",
+    "This looks like JavaScript.\nISeeCode can explain it, but it does not execute JavaScript in the current browser runner.",
 
-  explainLine(line, lineNumber, add) {
-    const trimmed = line.trim();
+  explainLine(line, lineNumber, add, options = {}) {
+    const ctx = createRuleContext(line, lineNumber, add);
+    const { trimmed } = ctx;
+    const confidence = options.confidence || "high";
+
     if (!trimmed) return false;
 
-    if (/^\/\//.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This is a comment. It helps the reader understand the code, but JavaScript does not run it."
-      );
+    if (
+      explainComment(ctx, {
+        style: "slash",
+        languageName: "JavaScript",
+        commentText:
+          "This is a comment. It helps the reader understand the code, but JavaScript does not run it.",
+      })
+    ) {
+      return true;
+    }
+
+    if (
+      explainComment(ctx, {
+        style: "blockStart",
+        languageName: "JavaScript",
+        commentText:
+          "This line starts a block comment. Everything inside the comment is ignored by JavaScript.",
+      })
+    ) {
+      return true;
+    }
+
+    if (
+      explainComment(ctx, {
+        style: "blockMiddle",
+        languageName: "JavaScript",
+        commentText:
+          "This line is part of a block comment, which is only for explanation or notes.",
+      })
+    ) {
+      return true;
+    }
+
+    if (
+      explainComment(ctx, {
+        style: "blockEnd",
+        languageName: "JavaScript",
+        commentText:
+          "This line ends a block comment. The comment text is not run by JavaScript.",
+      })
+    ) {
       return true;
     }
 
@@ -123,92 +172,53 @@ export const javascriptProfile = {
     }
 
     if (/^console\.log\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line prints a message to the console."
-      );
+      add(lineNumber, line, "This line prints a message to the console.");
       return true;
     }
 
-    if (/^if\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line checks a condition and runs the next block if it is true."
-      );
+    if (
+      explainConditionals(ctx, {
+        ifPattern: /^if\s*\(/,
+        elseIfPattern: /^else\s+if\s*\(/,
+        elsePattern: /^else\b/,
+        ifText:
+          "This line checks a condition and runs the next block if it is true.",
+        elseIfText:
+          "This line checks another condition if the earlier one was false.",
+        elseText:
+          "This line starts the alternative block for when the earlier condition is false.",
+      })
+    ) {
       return true;
     }
 
-    if (/^else\s+if\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line checks another condition if the earlier one was false."
-      );
+    if (
+      explainLoops(ctx, {
+        forPattern: /^for\s*\(/,
+        whilePattern: /^while\s*\(/,
+        doPattern: /^do\b/,
+        forText:
+          "This line starts a loop that repeats with a setup, condition, and update.",
+        whileText:
+          "This line starts a loop that runs while the condition stays true.",
+        doText:
+          "This line starts a do-while loop, which runs the block once before checking the condition.",
+      })
+    ) {
       return true;
     }
 
-    if (/^else\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts the alternative block for when the earlier condition is false."
-      );
-      return true;
-    }
-
-    if (/^for\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a loop that repeats with a setup, condition, and update."
-      );
-      return true;
-    }
-
-    if (/^while\s*\(/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a loop that runs while the condition stays true."
-      );
-      return true;
-    }
-
-    if (/^do\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line starts a do-while loop, which runs the block once before checking the condition."
-      );
-      return true;
-    }
-
-    if (/^return\b/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line ends the function and returns a value."
-      );
-      return true;
-    }
-
-    if (/^break\s*;?$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line stops the current loop or switch immediately."
-      );
-      return true;
-    }
-
-    if (/^continue\s*;?$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line skips the rest of the current loop iteration and moves to the next one."
-      );
+    if (
+      explainFlowKeywords(ctx, {
+        returnPattern: /^return\b/,
+        breakPattern: /^break\s*;?$/,
+        continuePattern: /^continue\s*;?$/,
+        returnText: "This line ends the function and returns a value.",
+        breakText: "This line stops the current loop or switch immediately.",
+        continueText:
+          "This line skips the rest of the current loop iteration and moves to the next one.",
+      })
+    ) {
       return true;
     }
 
@@ -257,12 +267,13 @@ export const javascriptProfile = {
       return true;
     }
 
-    if (/^\w+\s*\(.+\)\s*;?$/.test(trimmed)) {
-      add(
-        lineNumber,
-        line,
-        "This line calls a function, which means it asks another block of code to run."
-      );
+    if (
+      explainFunctionCall(ctx, {
+        pattern: /^\w+\s*\(.+\)\s*;?$/,
+        explanation:
+          "This line calls a function, which means it asks another block of code to run.",
+      })
+    ) {
       return true;
     }
 
@@ -284,28 +295,27 @@ export const javascriptProfile = {
       return true;
     }
 
-    if (trimmed === "{") {
-      add(
-        lineNumber,
-        line,
-        "This brace opens a new block of code."
-      );
-      return true;
-    }
-
-    if (trimmed === "}") {
-      add(
-        lineNumber,
-        line,
-        "This brace closes the block of code above it."
-      );
+    if (
+      explainBraces(ctx, {
+        openPattern: /^\{$/,
+        closePattern: /^\}$/,
+        openText: "This brace opens a new block of code.",
+        closeText: "This brace closes the block of code above it.",
+      })
+    ) {
       return true;
     }
 
     add(
       lineNumber,
       line,
-      "This line is part of the JavaScript program logic."
+      buildFallback({
+        languageName: "JavaScript",
+        confidence,
+        defaultText: "This line is part of the JavaScript program logic.",
+        lowConfidenceText:
+          "This looks like part of the JavaScript logic, though the code may be incomplete or mixed with another style.",
+      })
     );
     return true;
   },
