@@ -1,8 +1,8 @@
 # ISeeCode — Learn Code While You Write It
 
-ISeeCode is a browser-based visual code learning system that explains code line by line while the user writes it.
+ISeeCode is a browser-based system designed to help users learn programming by explaining code as they write it, line by line.
 
-Unlike a traditional IDE, compiler, or interpreter, ISeeCode is designed around a **learning-first workflow**. Its goal is not only to run code, but to help users understand what each line is doing in real time — even when the code is incomplete, partially written, or not directly executable.
+Most development tools are built around running code or checking syntax. ISeeCode takes a different approach. Its main focus is helping users understand what their code is doing in real time, even if the code is unfinished or not ready to run.
 
 **Repository:** `https://github.com/sarvauttam/visual-interpreter`  
 **Live Demo:** `https://sarvauttam.github.io/visual-interpreter`
@@ -252,15 +252,7 @@ These limitations are design trade-offs, not accidental omissions. The current s
 
 ## Future Improvements
 
-Planned or possible future extensions include:
-
-- deeper execution visualization
-- smarter runtime trace integration
-- stronger mixed-language handling
-- more advanced explanation generation
-- expanded language support
-- user accounts and persistent saved work
-- richer learning analytics and guided feedback
+Possible improvements include better execution visualization, more advanced explanation logic, improved handling of mixed-language code, and support for additional languages. Features like user accounts, saved progress, and learning analytics could also be added later.
 
 ---
 
@@ -302,6 +294,6 @@ If you want to improve the project, open an issue or fork the repository.
 
 ## Final Note
 
-ISeeCode is not just a code runner.
+ISeeCode is not just a tool for running code. 
 
-It is an educational interface designed to help users **understand code while writing it**, including cases where the code is unfinished, uncertain, or not directly executable.
+It is designed to help users understand what they are writing, even when the code is incomplete or uncertain. The focus stays on learning throughout the process, rather than only on getting code to execute.
