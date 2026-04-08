@@ -13,4 +13,5 @@ bridge/temp_source.vi
 bridge/temp_trace.jsonl
 
 .vscode/
-.DS_Store
+.DS_Storenode_modules/
+node_modules/
