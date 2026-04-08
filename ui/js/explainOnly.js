@@ -66,6 +66,56 @@ function buildCompetingLanguages(scoredProfiles) {
   return scoredProfiles.slice(0, 2).map((entry) => entry.profile.language);
 }
 
+function scoreTeachingLanguage(text) {
+  let score = 0;
+
+  const signals = [
+    { pattern: /^\s*let\s+[A-Za-z_]\w*\s*=/m, weight: 7 },
+    { pattern: /^\s*func\s+[A-Za-z_]\w*\s*\(/m, weight: 8 },
+    { pattern: /^\s*print\s*\(/m, weight: 5 },
+    { pattern: /^\s*input\s*\(\s*[A-Za-z_]\w*\s*\)\s*;/m, weight: 6 },
+    { pattern: /^\s*if\s*\(/m, weight: 3 },
+    { pattern: /^\s*while\s*\(/m, weight: 3 },
+    { pattern: /^\s*return\b/m, weight: 2 },
+    { pattern: /\btrue\b|\bfalse\b/, weight: 2 },
+  ];
+
+  for (const signal of signals) {
+    if (signal.pattern.test(text)) {
+      score += signal.weight;
+    }
+  }
+
+  // Strong negative signals for real-world languages
+  const negativeSignals = [
+    /^\s*#include\b/m,
+    /^\s*using\s+namespace\b/m,
+    /\bstd::/,
+    /\bcout\s*<</,
+    /\bcin\s*>>/,
+    /^\s*import\b/m,
+    /^\s*from\b.+\bimport\b/m,
+    /^\s*def\s+\w+\s*\(/m,
+    /^\s*class\s+\w+\s*:/m,
+    /\bconsole\.log\s*\(/,
+    /\bdocument\./,
+    /^\s*namespace\s+\w+/m,
+    /\bConsole\.Write(Line)?\s*\(/,
+  ];
+
+  for (const pattern of negativeSignals) {
+    if (pattern.test(text)) {
+      score -= 8;
+    }
+  }
+
+  return score;
+}
+
+function isTeachingLanguageRunnable(text) {
+  return scoreTeachingLanguage(text) >= 7;
+}
+
 export function detectSourceProfile(source) {
   const text = String(source || "");
   const trimmed = text.trim();
@@ -84,6 +134,24 @@ export function detectSourceProfile(source) {
     };
   }
 
+  const isPartialSource = detectPartialSource(text);
+
+  // Priority 1: runnable teaching language
+  if (isTeachingLanguageRunnable(text)) {
+    return {
+      mode: "run",
+      language: "Mini-language",
+      reason:
+        "This source matches the simplified teaching language, so it can run in the browser interpreter.",
+      profile: null,
+      confidence: "high",
+      matchedSignals: 0,
+      competingLanguages: [],
+      isMixed: false,
+      isPartialSource,
+    };
+  }
+
   const scoredProfiles = LANGUAGE_PROFILES
     .map((profile) => scoreProfile(profile, text))
     .filter((entry) => entry.score > 0)
@@ -91,8 +159,6 @@ export function detectSourceProfile(source) {
       if (b.score !== a.score) return b.score - a.score;
       return b.matchedSignals - a.matchedSignals;
     });
-
-  const isPartialSource = detectPartialSource(text);
 
   if (scoredProfiles.length) {
     const best = scoredProfiles[0];
@@ -102,10 +168,10 @@ export function detectSourceProfile(source) {
       second == null
         ? "high"
         : best.score >= second.score + 3
-        ? "high"
-        : best.score > second.score
-        ? "medium"
-        : "low";
+          ? "high"
+          : best.score > second.score
+            ? "medium"
+            : "low";
 
     const competingLanguages = buildCompetingLanguages(scoredProfiles);
     const isMixed =
