@@ -1,9 +1,0 @@
-rm -r -fo build
-cmake -S . -B build
-cmake --build build --config Debug
-ctest --test-dir build -C Debug --output-on-failure
-
-git add .
-git commit -m "UI redesign: layout + CSS + JS overhaul (ISeeCode)"
-git pull origin main --rebase
-git push origin main

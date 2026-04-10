@@ -63,7 +63,6 @@ int main(int argc, char** argv) {
   // Evaluator
   Evaluator eval;
 
-  // Trace setup (optional)
   std::unique_ptr<std::ofstream> trace_file;
   std::unique_ptr<TraceEmitter> emitter;
   if (!trace_path.empty()) {
@@ -77,8 +76,7 @@ int main(int argc, char** argv) {
     eval.set_trace(emitter.get());
   }
 
-  // Execute ✅ HERE
-  if (!eval.exec_program(program)) {                 // <-- and here
+  if (!eval.exec_program(program)) {
     if (eval.last_error()) {
       std::cerr << "RuntimeError: " << eval.last_error()->message << "\n";
     } else {
