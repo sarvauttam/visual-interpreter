@@ -8,3 +8,11 @@
 @import "./history.css";
 @import "./badges.css";
 @import "./responsive.css";
+@import "./tutorial.css";
+@import "./guidedMode.css";
+@import "./diagnostics.css";
+@import "./templates.css";
+@import "./libraryInfo.css";
+@import "./lineNumbers.css";
+@import "./languageSelect.css";
+@import "./draft.css";

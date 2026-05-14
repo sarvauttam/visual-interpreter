@@ -23,10 +23,16 @@
       </div>
 
       <nav class="topbar-right" aria-label="Main navigation">
+        <button class="topbar-btn" id="templatesBtn" type="button">
+          Templates
+        </button>
+        <button class="topbar-btn" id="guidedCppBtn" type="button">Guided C++</button>
         <button class="topbar-btn" id="howToUseBtn" type="button">How to Use</button>
         <button class="topbar-btn" id="uploadBtn" type="button">Upload File</button>
         <button class="topbar-btn" id="historyBtn" type="button">History</button>
-        <button class="topbar-btn topbar-btn--account" id="accountBtn" type="button">Account</button>
+        <button class="topbar-btn topbar-btn--account" id="accountBtn" type="button">
+          Local Saves
+        </button>
       </nav>
     </header>
 
@@ -47,6 +53,15 @@
 
           <div class="editor-toolbar" aria-label="Editor tools">
             <div class="font-size-control" aria-label="Font size controls">
+              <div class="language-select-control">
+                <label for="languageSelect">Language</label>
+                <select id="languageSelect">
+                  <option value="cpp" selected>C++</option>
+                  <option value="python">Python</option>
+                </select>
+              </div>
+
+              <div class="toolbar-divider" aria-hidden="true"></div>
               <button class="toolbar-btn toolbar-btn--soft" id="fontDecreaseBtn" type="button" title="Decrease font size">−</button>
 
               <label class="sr-only" for="fontSizeInput">Font size</label>

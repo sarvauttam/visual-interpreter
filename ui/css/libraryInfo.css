@@ -1,0 +1,34 @@
+.library-info-box {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #14532d;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.library-info-box h3 {
+  margin: 0 0 10px;
+  color: #166534;
+}
+
+.library-info-item {
+  border-top: 1px solid #bbf7d0;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.library-info-item:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.library-info-item strong {
+  display: block;
+  color: #15803d;
+}
+
+.library-info-item p {
+  margin: 4px 0 0;
+}

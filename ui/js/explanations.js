@@ -1,3 +1,5 @@
+import { pickExplanation } from "./explanationMessages.js";
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -410,14 +412,124 @@ export function getLineHint(line, hintType = "generic") {
 export function buildFriendlyExplanation(line) {
   const trimmed = normalizeLine(line);
 
-  if (/^#include\s*[<"].+[>"]\s*$/.test(trimmed)) {
+  if (/^using\s+namespace\s+std\s*;\s*$/.test(trimmed)) {
     return {
-      title: "This line brings in a library",
-      summary: "It tells your program to include extra tools from a library before the code runs.",
+      title: "This makes standard C++ names easier to use",
+      summary: "It lets you write cout instead of std::cout.",
+      steps: [],
+      teachingHtml: pickExplanation("namespace", { lineText: trimmed }),
+    };
+  }
+
+  if (/^int\s+main\s*\(\s*\)\s*\{\s*$/.test(trimmed)) {
+    return {
+      title: "This starts the main function",
+      summary: "C++ begins running your program from main().",
+      steps: [],
+      teachingHtml: pickExplanation("mainFunction", { lineText: trimmed }),
+    };
+  }
+
+  const variableMatch = trimmed.match(/^(int|float|double|string|char|bool)\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\s*=\s*(.+))?\s*;$/);
+
+  if (variableMatch) {
+    const [, type, variableName, value] = variableMatch;
+
+    return {
+      title: `This creates ${variableName}`,
+      summary: `The program creates a ${type} variable named ${variableName}.`,
+      steps: [],
+      teachingHtml: pickExplanation("variableDeclaration", {
+        type,
+        variableName,
+        value,
+        lineText: trimmed,
+      }),
+    };
+  }
+
+  const cinMatch = trimmed.match(/^cin\s*>>\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*;$/);
+
+  if (cinMatch) {
+    const [, variableName] = cinMatch;
+
+    return {
+      title: `This reads input into ${variableName}`,
+      summary: `The user types a value, and the program stores it inside ${variableName}.`,
+      steps: [],
+      teachingHtml: pickExplanation("cin", {
+        variableName,
+        lineText: trimmed,
+      }),
+    };
+  }
+
+  const coutStringMatch = trimmed.match(/^cout\s*<<\s*"([^"]*)"(?:\s*<<\s*endl)?\s*;$/);
+
+  if (coutStringMatch) {
+    const [, value] = coutStringMatch;
+
+    return {
+      title: "This prints text",
+      summary: "The program displays a message on the screen.",
+      steps: [],
+      teachingHtml: pickExplanation("coutString", {
+        value,
+        lineText: trimmed,
+      }),
+    };
+  }
+
+  const coutVariableMatch = trimmed.match(/^cout\s*<<\s*([a-zA-Z_][a-zA-Z0-9_]*)(?:\s*<<\s*endl)?\s*;$/);
+
+  if (coutVariableMatch) {
+    const [, variableName] = coutVariableMatch;
+
+    return {
+      title: `This prints ${variableName}`,
+      summary: `The program displays the value stored in ${variableName}.`,
+      steps: [],
+      teachingHtml: pickExplanation("coutVariable", {
+        variableName,
+        lineText: trimmed,
+      }),
+    };
+  }
+
+  if (/^return\s+0\s*;\s*$/.test(trimmed)) {
+    return {
+      title: "This ends the program successfully",
+      summary: "return 0 tells the computer the program finished correctly.",
+      steps: [],
+      teachingHtml: pickExplanation("returnStatement", { lineText: trimmed }),
+    };
+  }
+
+  if (/^\}\s*$/.test(trimmed)) {
+    return {
+      title: "This closes a block of code",
+      summary: "The closing brace ends the current section.",
+      steps: [],
+      teachingHtml: pickExplanation("closingBrace", { lineText: trimmed }),
+    };
+  }
+
+  if (/^#include\s*[<"].+[>"]\s*$/.test(trimmed)) {
+    const libraryMatch = trimmed.match(/^#include\s*[<"]([^>"]+)[>"]\s*$/);
+    const libraryName = libraryMatch?.[1] || "library";
+
+    return {
+      title: `This imports ${libraryName}`,
+      summary: `The program is loading the ${libraryName} library before it runs.`,
       steps: [
-        "The program is asking for features that are defined outside your file.",
-        "This is often used so you can print output, work with strings, or use other standard tools.",
+        "Libraries give your program extra ready-made tools.",
+        "The exact tools depend on which library name appears inside the angle brackets.",
       ],
+      teachingHtml: pickExplanation("include", {
+        libraryName,
+        libraryRole: `The ${libraryName} library gives this program extra C++ features connected to that library.`,
+        lineText: trimmed,
+      }),
     };
   }
 
@@ -978,10 +1090,17 @@ function renderActiveCard(entry) {
       <div class="card card--interactive explanation-card__label${extraLabelClass}">${label}</div>
       <h3>Line ${entry.lineNumber}: ${escapeHtml(entry.title)}</h3>
       <div class="explanation-code-line">${escapeHtml(entry.line.trim())}</div>
-      <p>${escapeHtml(entry.summary)}</p>
-      <ul class="explanation-list">
-        ${entry.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
-      </ul>
+
+      ${entry.teachingHtml
+        ? `<div class="explanation-teaching">${entry.teachingHtml}</div>`
+        : `
+          <p>${escapeHtml(entry.summary)}</p>
+          <ul class="explanation-list">
+            ${entry.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
+          </ul>
+        `
+      }
+
       ${runtimeSection}
     </article>
   `;

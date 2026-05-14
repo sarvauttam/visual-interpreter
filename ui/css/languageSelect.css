@@ -1,0 +1,26 @@
+.language-select-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.language-select-control label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.language-select-control select {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-weight: 700;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.language-select-control select:focus {
+  outline: 3px solid rgba(37, 99, 235, 0.18);
+  border-color: #2563eb;
+}

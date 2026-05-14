@@ -1,0 +1,157 @@
+/* =========================================================
+   ISeeCode Line Numbers
+   Stable textarea-based editor layout.
+   The gutter lives inside the same wrapper as the textarea.
+   ========================================================= */
+
+.code-input-line-wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* The textarea remains the real editor. */
+.code-input-line-wrap .code-input {
+  width: 100%;
+  min-height: 320px;
+
+  box-sizing: border-box;
+
+  padding-top: 16px !important;
+  padding-right: 18px !important;
+  padding-bottom: 16px !important;
+  padding-left: 72px !important;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: var(--editor-font-size, 16px);
+  line-height: 1.6 !important;
+
+  border-radius: 16px;
+  resize: vertical;
+
+  background:
+    linear-gradient(
+      90deg,
+      #f8fafc 0,
+      #f8fafc 54px,
+      #dbeafe 54px,
+      #dbeafe 55px,
+      #ffffff 55px,
+      #ffffff 100%
+    );
+
+  tab-size: 2;
+}
+
+/* The gutter is only visual. It does not affect typing. */
+.line-number-gutter {
+  position: absolute;
+
+  top: 1px;
+  left: 1px;
+  bottom: 1px;
+
+  width: 54px;
+
+  box-sizing: border-box;
+  overflow: hidden;
+
+  padding-top: 16px;
+  padding-right: 10px;
+  padding-bottom: 16px;
+  padding-left: 4px;
+
+  border-radius: 15px 0 0 15px;
+
+  color: #64748b;
+  text-align: right;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: var(--editor-font-size, 16px);
+  line-height: 1.6;
+
+  user-select: none;
+  pointer-events: none;
+
+  z-index: 2;
+}
+
+/* One number per actual code line only.
+   It does not fill the whole editor with fake extra numbers. */
+.line-number {
+  height: 1.6em;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Focus polish */
+.code-input-line-wrap:focus-within .code-input {
+  background:
+    linear-gradient(
+      90deg,
+      #eff6ff 0,
+      #eff6ff 54px,
+      #93c5fd 54px,
+      #93c5fd 55px,
+      #ffffff 55px,
+      #ffffff 100%
+    );
+}
+
+/* Error state stays visually clean */
+.code-input-line-wrap .code-input.code-input--has-error {
+  background:
+    linear-gradient(
+      90deg,
+      #fef2f2 0,
+      #fef2f2 54px,
+      #dc2626 54px,
+      #dc2626 55px,
+      #ffffff 55px,
+      #ffffff 100%
+    );
+
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.14);
+}
+
+.code-input-line-wrap .code-input.code-input--has-error + .line-number-gutter,
+.code-input-line-wrap:has(.code-input--has-error) .line-number-gutter {
+  color: #991b1b;
+}
+
+/* Scrollbars should belong to the textarea, not the gutter */
+.line-number-gutter::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile */
+@media (max-width: 720px) {
+  .code-input-line-wrap .code-input {
+    padding-left: 60px !important;
+
+    background:
+      linear-gradient(
+        90deg,
+        #f8fafc 0,
+        #f8fafc 44px,
+        #dbeafe 44px,
+        #dbeafe 45px,
+        #ffffff 45px,
+        #ffffff 100%
+      );
+  }
+
+  .line-number-gutter {
+    width: 44px;
+    padding-right: 8px;
+    font-size: 13px;
+  }
+}
+
+.line-number--active {
+  color: #1d4ed8;
+  font-weight: 800;
+  background: #dbeafe;
+  border-radius: 999px;
+  padding-right: 6px;
+}

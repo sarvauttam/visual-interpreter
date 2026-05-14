@@ -1,0 +1,55 @@
+.templates-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.template-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+}
+
+.template-card:hover {
+  background: #dbeafe;
+}
+
+.template-card h3 {
+  margin: 0 0 6px;
+  color: #1d4ed8;
+}
+
+.template-card p {
+  margin: 0;
+  color: #1e3a8a;
+}
+
+.template-level {
+  display: inline-block;
+  margin-top: 10px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.template-teaches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.template-topic {
+  background: #f1f5f9;
+  color: #334155;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}

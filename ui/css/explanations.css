@@ -360,3 +360,94 @@
 .explanation-step__text {
   margin-top: 6px;
 }
+
+.explanation-teaching p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.explanation-teaching code {
+  background: rgba(15, 23, 42, 0.08);
+  border-radius: 6px;
+  padding: 2px 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.explanation-teaching {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.explanation-teaching p {
+  margin: 8px 0;
+  line-height: 1.55;
+}
+
+.explanation-teaching p:first-child {
+  margin-top: 0;
+}
+
+.explanation-teaching p:last-child {
+  margin-bottom: 0;
+}
+
+.explanation-teaching strong {
+  color: #1d4ed8;
+}
+
+.explanation-teaching code {
+  background: #e0f2fe;
+  color: #0f172a;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.explanation-card {
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.explanation-card:hover {
+  transform: translateY(-1px);
+}
+
+.explanation-card--active {
+  border-left: 4px solid #2563eb;
+}
+
+.explanation-card__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 800;
+}
+
+.explanation-card--draft-error {
+  border-left: 4px solid #dc2626;
+  background: #fef2f2;
+}
+
+.explanation-card--error {
+  border-left: 4px solid #b91c1c;
+  background: #fff1f2;
+}
+
+.explanation-card__label--draft-error {
+  background: #dc2626;
+  color: white;
+}
+
+.explanation-card__label--error {
+  background: #991b1b;
+  color: white;
+}
+
+.explanation-meta strong {
+  color: #991b1b;
+}

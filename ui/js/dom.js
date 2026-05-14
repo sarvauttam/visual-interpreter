@@ -29,5 +29,7 @@ export function getDom() {
     sourceModeBadge: document.getElementById("sourceModeBadge"),
     outputModeBadge: document.getElementById("outputModeBadge"),
     explanationModeBadge: document.getElementById("explanationModeBadge"),
+
+    languageSelect: document.getElementById("languageSelect")
   };
 }

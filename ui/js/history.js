@@ -19,6 +19,7 @@ function createHistoryItem({ source, stdoutText, ok, errorText }) {
   return {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
+    name: truncatePreview(source, 48) || "Untitled code",
     source,
     preview: truncatePreview(source),
     stdoutText: stdoutText || "",
@@ -32,6 +33,19 @@ export function createHistoryController() {
     const raw = localStorage.getItem(STORAGE_KEY);
     const items = safeJsonParse(raw, []);
     return Array.isArray(items) ? items : [];
+  }
+
+  function renameItem(id, name) {
+    const cleanName = String(name || "").trim();
+    if (!cleanName) return loadItems();
+
+    const updated = loadItems().map((item) => {
+      if (item.id !== id) return item;
+      return { ...item, name: cleanName };
+    });
+
+    saveItems(updated);
+    return updated;
   }
 
   function saveItems(items) {
@@ -75,6 +89,29 @@ export function createHistoryController() {
     return true;
   }
 
+  function renameItem(id, name) {
+    const cleanName = String(name || "").trim();
+
+    if (!cleanName) {
+      return loadItems();
+    }
+
+    const updated = loadItems().map((item) => {
+      if (item.id !== id) {
+        return item;
+      }
+
+      return {
+        ...item,
+        name: cleanName,
+      };
+    });
+
+    saveItems(updated);
+
+    return updated;
+  }
+
   return {
     init,
     getItems,
@@ -82,6 +119,8 @@ export function createHistoryController() {
     hasItems,
     saveRun,
     removeItem,
+    renameItem,
     clearAll,
+    renameItem,
   };
 }

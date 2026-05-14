@@ -59,3 +59,37 @@
   line-height: 1.65;
   color: var(--text-soft);
 }
+
+.history-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.history-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.history-actions [data-history-action="load"] {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.history-actions [data-history-action="rename"] {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.history-actions [data-history-action="delete"] {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.history-actions button:hover {
+  filter: brightness(0.96);
+}

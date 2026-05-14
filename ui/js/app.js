@@ -1,3 +1,13 @@
+import { createTutorialController } from "./tutorial.js";
+import { createGuidedModeController } from "./languages/cpp/guidedMode.js";
+import { createCppDiagnosticsController } from "./languages/cpp/cppDiagnostics.js";
+import { createDraftStorageController } from "./draftStorage.js";
+import { createTemplatesController } from "./templates.js";
+import { createLibraryInfoController } from "./languages/cpp/libraryInfo.js";
+import { createLineNumbersController } from "./lineNumbers.js";
+import { createEditorIndentationController } from "./editorIndentation.js";
+import { getLanguageProfile } from "./languageProfiles/index.js";
+
 import { getDom } from "./dom.js";
 import { createEditorController } from "./editor.js";
 import {
@@ -234,19 +244,32 @@ function renderHowToUseModal(modal) {
 
 function renderAccountModal(modal) {
   modal.openModal({
-    title: "Account",
-    subtitle: "This area is reserved for future saved-work and profile features",
+    title: "Local Saves",
+    subtitle: "Your code history is saved only in this browser",
     bodyHtml: `
-      <section class="modal-section">
-        <h3>Not connected yet</h3>
+      <div class="card">
+        <h3>Storage status</h3>
         <p>
-          Account features are not active yet. This space can later hold saved work,
-          preferences, syncing, or user profile settings.
+          ISeeCode currently saves history using your browser's local storage.
+          This means your saved code stays on this browser and this device.
         </p>
-      </section>
+
+        <h3>What this means</h3>
+        <p>
+          If you clear browser data, use private browsing, or switch devices,
+          your saved history may not be available.
+        </p>
+
+        <h3>Why there is no account yet</h3>
+        <p>
+          Accounts are only useful after cloud sync, login, or server storage
+          is added. Until then, this button is labeled Local Saves to avoid
+          misleading users.
+        </p>
+      </div>
     `,
   });
-}
+};
 
 function updateHistoryButtonState(dom, history) {
   dom.historyBtn?.classList.toggle("has-history", history.hasItems());
@@ -283,12 +306,21 @@ function renderHistoryModal({
       <div class="history-list">
         ${items.map((item) => `
           <article class="card history-card" data-history-id="${escapeHtml(item.id)}">
-            <h3>${item.ok ? "Successful run" : "Run with issue"}</h3>
+            <h3>${escapeHtml(item.name || "Untitled code")}</h3>
             <p class="history-meta">${escapeHtml(formatDate(item.createdAt))}</p>
             <div class="history-preview">${escapeHtml(item.preview || "(no preview)")}</div>
             <div class="history-actions">
-              <button class="soft-btn" type="button" data-history-action="load" data-history-id="${escapeHtml(item.id)}">Load into editor</button>
-              <button class="danger-btn" type="button" data-history-action="delete" data-history-id="${escapeHtml(item.id)}">Delete</button>
+              <button type="button" data-history-action="load" data-history-id="${item.id}">
+                Load
+              </button>
+
+              <button type="button" data-history-action="rename" data-history-id="${item.id}">
+                Rename
+              </button>
+
+              <button type="button" data-history-action="delete" data-history-id="${item.id}">
+                Delete
+              </button>
             </div>
           </article>
         `).join("")}
@@ -325,9 +357,82 @@ function renderHistoryModal({
     });
   });
 
+dom.modalBody
+  ?.querySelectorAll("[data-history-action='delete']")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-history-id");
+
+      const item = history.getItem(id);
+
+      if (!item) return;
+
+      const confirmed = window.confirm(
+        `Delete "${item.name || "Untitled code"}"?`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      history.removeItem(id);
+
+      updateHistoryButtonState(dom, history);
+
+      renderHistoryModal({
+        modal,
+        history,
+        editor,
+        dom,
+      });
+    });
+  });
+
+  dom.modalBody?.querySelector("[data-history-action='clear-all']")?.addEventListener("click", () => {
+      history.clearAll();
+      updateHistoryButtonState(dom, history);
+      renderHistoryModal({ modal, history, editor, dom });
+    });
+
+dom.modalBody
+  ?.querySelectorAll("[data-history-action='rename']")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.getAttribute("data-history-id");
+
+      const item = history.getItem(id);
+
+      if (!item) return;
+
+      const nextName = window.prompt(
+        "Rename this saved code:",
+        item.name || item.preview || "Untitled code"
+      );
+
+      if (!nextName || !nextName.trim()) {
+        return;
+      }
+
+      history.renameItem(id, nextName);
+
+      renderHistoryModal({
+        modal,
+        history,
+        editor,
+        dom,
+      });
+    });
+  });
+
   dom.modalBody?.querySelectorAll("[data-history-action='delete']").forEach((button) => {
     button.addEventListener("click", () => {
       const id = button.getAttribute("data-history-id");
+      const item = history.getItem(id);
+      if (!item) return;
+
+      const ok = window.confirm(`Delete "${item.name || item.preview || "this saved code"}"?`);
+      if (!ok) return;
+
       history.removeItem(id);
       updateHistoryButtonState(dom, history);
       renderHistoryModal({ modal, history, editor, dom });
@@ -335,19 +440,48 @@ function renderHistoryModal({
   });
 
   dom.modalBody?.querySelector("[data-history-action='clear-all']")?.addEventListener("click", () => {
+    const ok = window.confirm("Delete all saved history?");
+    if (!ok) return;
+
     history.clearAll();
     updateHistoryButtonState(dom, history);
     renderHistoryModal({ modal, history, editor, dom });
   });
 }
 
-function bindTopbarActions(dom, modal, history, editor) {
+function bindTopbarActions(dom, modal, history, editor, tutorial, guidedMode, templates) {
+
   dom.howToUseBtn?.addEventListener("click", () => {
-    renderHowToUseModal(modal);
+    tutorial.start({ force: true });
+  });
+
+  document.getElementById("guidedCppBtn")?.addEventListener("click", () => {
+    const selectedLanguage = document.getElementById("languageSelect")?.value || "cpp";
+
+    if (selectedLanguage !== "cpp") {
+      modal.openModal({
+        title: "Guided Mode is C++ only for now",
+        subtitle: "Python guided lessons are coming later",
+        bodyHtml: `
+          <p>
+            Guided Mode currently teaches the beginner C++ flow.
+            Switch the language selector back to C++ to use it.
+          </p>
+        `,
+      });
+
+      return;
+    }
+
+    guidedMode.start();
   });
 
   dom.accountBtn?.addEventListener("click", () => {
     renderAccountModal(modal);
+  });
+
+  document.getElementById("templatesBtn")?.addEventListener("click", () => {
+    templates.openTemplatesModal();
   });
 
   dom.historyBtn?.addEventListener("click", () => {
@@ -365,52 +499,125 @@ function bindUpload(dom, editor) {
     dom.fileInput?.click();
   });
 
-  dom.fileInput?.addEventListener("change", async (event) => {
-    const file = event.target.files?.[0];
+  dom.fileInput?.addEventListener("change", () => {
+    const file = dom.fileInput.files?.[0];
+
     if (!file) return;
 
-    try {
-      const text = await file.text();
-      editor.setCode(text);
+    const fileName = file.name.toLowerCase();
 
-      const profile = detectSourceProfile(text);
-      renderAllModeBadges(dom, profile);
-      renderLiveExplanationPreview(dom.explanationContent, text);
-
-      renderInlineNote(
-        dom.explanationContent,
-        `Loaded "${file.name}" into the editor. ${buildSourceModeNote(profile)}`,
-        "success"
-      );
-    } catch (error) {
-      console.error("Failed to read uploaded file:", error);
-      renderInlineNote(
-        dom.explanationContent,
-        "That file could not be read.",
-        "warning"
-      );
-    } finally {
-      event.target.value = "";
+    if (dom.languageSelect) {
+      if (fileName.endsWith(".py")) {
+        dom.languageSelect.value = "python";
+        dom.languageSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      } else if (
+        fileName.endsWith(".cpp") ||
+        fileName.endsWith(".cc") ||
+        fileName.endsWith(".cxx") ||
+        fileName.endsWith(".hpp") ||
+        fileName.endsWith(".h") ||
+        fileName.endsWith(".c")
+      ) {
+        dom.languageSelect.value = "cpp";
+        dom.languageSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
     }
+
+    const reader = new FileReader();
+
+    reader.addEventListener("load", () => {
+      const text = String(reader.result || "");
+
+      if (editor && typeof editor.setCode === "function") {
+        editor.setCode(text);
+      } else if (dom.codeInput) {
+        dom.codeInput.value = text;
+        dom.codeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+
+      dom.fileInput.value = "";
+    });
+
+    reader.addEventListener("error", () => {
+      dom.fileInput.value = "";
+      window.alert("Could not read this file. Please try another file.");
+    });
+
+    reader.readAsText(file);
   });
 }
 
-function bindEditorActions(dom, editor, runner, history) {
+function bindEditorActions(
+  dom,
+  editor,
+  runner,
+  history,
+  guidedMode,
+  diagnostics,
+  draftStorage,
+  libraryInfo,
+  getActiveLanguage,
+  modal
+) {
+
   dom.codeInput?.addEventListener("input", () => {
     const source = editor.getCode();
     const profile = detectSourceProfile(source);
+    const activeLanguage = getActiveLanguage
+      ? getActiveLanguage()
+      : { id: "cpp", supportsDiagnostics: true, supportsLibraryInfo: true };
 
-    renderAllModeBadges(dom, profile);
-    renderLiveExplanationPreview(dom.explanationContent, source);
+    if (activeLanguage.id === "cpp") {
+      renderAllModeBadges(dom, profile);
+      renderLiveExplanationPreview(dom.explanationContent, source);
+    } else {
+      dom.sourceModeBadge.textContent = `${activeLanguage.displayName || activeLanguage.label || activeLanguage.id} selected`;
+      dom.outputModeBadge.textContent = "Not runnable yet";
+      dom.explanationModeBadge.textContent = "Coming soon";
+
+      dom.explanationContent.innerHTML = `
+        <div class="card card--dashed empty-state-card">
+          <h3>${activeLanguage.displayName || activeLanguage.label || activeLanguage.id} support is coming soon</h3>
+          <p>
+            This language is visible in the interface, but its interpreter,
+            explanations, and diagnostics are not connected yet.
+          </p>
+          <p class="muted">
+            Switch back to C++ to use the current learning tools.
+          </p>
+        </div>
+      `;
+    }
+
+    if (activeLanguage.supportsGuidedMode && guidedMode) {
+      guidedMode.handleInput();
+    }
+
+    if (activeLanguage.supportsLibraryInfo && libraryInfo) {
+      libraryInfo.render(source);
+    }
+
+    if (activeLanguage.supportsDiagnostics && diagnostics) {
+      diagnostics.schedule(source);
+    }
+
+    draftStorage.scheduleSave();
   });
 
-  dom.clearBtn?.addEventListener("click", () => {
+    dom.clearBtn?.addEventListener("click", () => {
+      const confirmed = window.confirm("Clear the editor and remove the saved draft?");
+
+      if (!confirmed) {
+        return;
+      }
+
     const hadCode = editor.getCode().trim().length > 0;
 
     editor.clearEditor();
     runner.renderClearedOutput();
     renderEmptyExplanationState(dom.explanationContent);
     renderAllModeBadges(dom, { mode: "empty" });
+    draftStorage.clear();
 
     if (hadCode) {
       renderInlineNote(
@@ -421,8 +628,71 @@ function bindEditorActions(dom, editor, runner, history) {
     }
   });
 
+  dom.languageSelect?.addEventListener("change", () => {
+    activeLanguage = getLanguageProfile(dom.languageSelect.value);
+
+    renderAllModeBadges(dom, {
+      mode: activeLanguage.id === "cpp" ? "empty" : "Language not active yet",
+    });
+
+    if (activeLanguage.id === "python") {
+      modal.openModal({
+        title: "Python support coming soon",
+        subtitle: "C++ is currently the active supported language",
+        bodyHtml: `
+          <p>
+            Python has been added to the project structure, but its interpreter,
+            diagnostics, guided mode, and explanations are not connected yet.
+          </p>
+          <p>
+            You can switch back to C++ to use all current ISeeCode features.
+          </p>
+        `,
+      });
+    }
+  });
+
   dom.runBtn?.addEventListener("click", async () => {
-    const source = editor.getCode();
+  const source = editor.getCode();
+
+  if (!source.trim()) {
+    runner.renderClearedOutput();
+    renderEmptyExplanationState(dom.explanationContent);
+    renderInlineNote(
+      dom.explanationContent,
+      "Write some code first before running or explaining it.",
+      "warning"
+    );
+    return;
+  }
+
+  const activeLanguage = getActiveLanguage
+    ? getActiveLanguage()
+    : { id: "cpp", displayName: "C++", supportsDiagnostics: true };
+
+  if (activeLanguage.id !== "cpp") {
+    modal.openModal({
+      title: `${activeLanguage.displayName || activeLanguage.label || activeLanguage.id} is not runnable yet`,
+      subtitle: "C++ is currently the supported interpreter",
+      bodyHtml: `
+        <p>
+          This language has been added to the interface, but its interpreter is not connected yet.
+        </p>
+        <p>
+          Switch back to C++ to run code right now.
+        </p>
+      `,
+    });
+
+    return;
+  }
+
+    const diagnosticErrors = diagnostics ? diagnostics.checkForRun(source) : [];
+
+    if (diagnosticErrors.length > 0) {
+      return;
+    }
+
     const profile = detectSourceProfile(source);
 
     if (!source.trim()) {
@@ -486,26 +756,57 @@ function bindEditorActions(dom, editor, runner, history) {
 }
 
 function initApp() {
-  const dom = getDom();
 
+  const dom = getDom();
   const editor = createEditorController(dom);
   const runner = createRunner(dom);
   const history = createHistoryController();
   const modal = createModalController(dom);
+  const tutorial = createTutorialController(dom);
+  const guidedMode = createGuidedModeController(dom, editor);
+  const diagnostics = createCppDiagnosticsController(dom);
+  const draftStorage = createDraftStorageController(editor);
+  const templates = createTemplatesController(
+    dom,
+    editor,
+    modal,
+    () => activeLanguage
+  );
+  const libraryInfo = createLibraryInfoController(dom);
+  const lineNumbers = createLineNumbersController(dom, editor);
+  const editorIndentation = createEditorIndentationController(dom);
+
+  let activeLanguage = getLanguageProfile(dom.languageSelect?.value || "cpp");
 
   editor.init();
   runner.init();
   history.init();
   modal.bindModalEvents();
-
+  tutorial.init();
+  draftStorage.restore();
+  lineNumbers.init();
+  editorIndentation.init();
+  // templates.init();
   renderEmptyExplanationState(dom.explanationContent);
   runner.renderClearedOutput();
   renderAllModeBadges(dom, { mode: "empty" });
   updateHistoryButtonState(dom, history);
 
-  bindTopbarActions(dom, modal, history, editor);
+bindTopbarActions(dom, modal, history, editor, tutorial, guidedMode, templates);
+bindEditorActions(
+  dom,
+  editor,
+  runner,
+  history,
+  guidedMode,
+  diagnostics,
+  draftStorage,
+  libraryInfo,
+  () => activeLanguage,
+  modal
+);
+
   bindUpload(dom, editor);
-  bindEditorActions(dom, editor, runner, history);
 
   console.log("ISeeCode Phase E cleanup and polish loaded.");
 }
