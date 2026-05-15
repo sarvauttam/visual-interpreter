@@ -1,109 +1,42 @@
-const CPP_PROFILE = [
-    {
-    name: "include library",
-    pattern: /^#include\s*<[a-zA-Z_][a-zA-Z0-9_]*>\s*$/,
-    message: "Use the include format: #include <library_name>",
-    },
-  {
-    name: "namespace std",
-    pattern: /^using\s+namespace\s+std\s*;\s*$/,
-    message: "Use exactly: using namespace std;",
-  },
-  {
-    name: "main open",
-    pattern: /^int\s+main\s*\(\s*\)\s*\{\s*$/,
-    message: "Use: int main() {",
-  },
-  {
-    name: "cout output",
-    pattern: /^cout\s*(<<\s*[^;]+)+\s*;\s*$/,
-    message: "Use cout with << operators and finish the line with a semicolon.",
-  },
-  {
-    name: "cout variable",
-    pattern: /^cout\s*<<\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(<<\s*endl)?\s*;\s*$/,
-    message: "Use cout with << and end with semicolon.",
-  },
-  {
-    name: "cin input",
-    pattern: /^cin\s*(>>\s*[a-zA-Z_][a-zA-Z0-9_]*)+\s*;\s*$/,
-    message: "Use cin with >> followed by variable names.",
-  },
-  {
-    name: "int variable",
-    pattern: /^int\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(=\s*-?\d+)?\s*;\s*$/,
-    message: "Use int like: int age = 10;",
-  },
-  {
-    name: "string variable",
-    pattern: /^string\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(=\s*"([^"\\]|\\.)*")?\s*;\s*$/,
-    message: 'Use string like: string name = "Alex";',
-  },
-  {
-    name: "if statement",
-    pattern: /^if\s*\(.+\)\s*\{\s*$/,
-    message: "Use if like: if (condition) {",
-  },
-
-  {
-    name: "else statement",
-    pattern: /^else\s*\{\s*$/,
-    message: "Use else like: else {",
-  },
-
-  {
-    name: "else if statement",
-    pattern: /^else\s+if\s*\(.+\)\s*\{\s*$/,
-    message: "Use else if like: else if (condition) {",
-  },
-
-  {
-    name: "for loop",
-    pattern: /^for\s*\(.+;.+;.+\)\s*\{\s*$/,
-    message: "Use for like: for (start; condition; update) {",
-  },
-
-  {
-    name: "while loop",
-    pattern: /^while\s*\(.+\)\s*\{\s*$/,
-    message: "Use while like: while (condition) {",
-  },
-  {
-    name: "return zero",
-    pattern: /^return\s+0\s*;\s*$/,
-    message: "Use exactly: return 0;",
-  },
-  {
-    name: "close brace",
-    pattern: /^\}\s*$/,
-    message: "Use } to close the main function.",
-  },
-];
-
-function makeError(line, description, text = "") {
-  return { line, description, text };
-}
-
-function matchesAnySupportedLine(line) {
-  return CPP_PROFILE.some((rule) => rule.pattern.test(line));
-}
+import {
+  removeDiagnosticsBox,
+  renderDiagnosticsBox,
+  renderDiagnosticsSummary,
+} from "../shared/diagnosticsRenderer.js";
+import { CPP_PROFILE } from "../../languageProfiles/cppProfile.js";
+import {
+  makeError,
+  matchesAnySupportedLine,
+  findRuleByName,
+} from "../shared/diagnosticsUtils.js";
 
 function findClosestRule(line) {
   const trimmed = line.trim();
 
-  if (trimmed.startsWith("#")) return CPP_PROFILE[0];
-  if (trimmed.startsWith("using")) return CPP_PROFILE[1];
-  if (trimmed.includes("main")) return CPP_PROFILE[2];
-  if (trimmed.includes("cout") || trimmed.includes("coot")) return CPP_PROFILE[3];
-  if (trimmed.startsWith("int ")) return CPP_PROFILE[5];
-  if (trimmed.startsWith("string ")) return CPP_PROFILE[6];
-  if (trimmed.includes("return")) return CPP_PROFILE[7];
-  if (trimmed.includes("}")) return CPP_PROFILE[8];
-  if (trimmed.startsWith("if")) return CPP_PROFILE.find((rule) => rule.name === "if statement");
-  if (trimmed.startsWith("else if")) return CPP_PROFILE.find((rule) => rule.name === "else if statement");
-  if (trimmed.startsWith("else")) return CPP_PROFILE.find((rule) => rule.name === "else statement");
-  if (trimmed.startsWith("for")) return CPP_PROFILE.find((rule) => rule.name === "for loop");
-  if (trimmed.startsWith("while")) return CPP_PROFILE.find((rule) => rule.name === "while loop");
+if (trimmed.startsWith("#")) {
+  return findRuleByName(CPP_PROFILE, "include library");
+}
+
+if (trimmed.startsWith("using")) {
+  return findRuleByName(CPP_PROFILE, "namespace std");
+}
+
+if (trimmed.includes("main")) {
+  return findRuleByName(CPP_PROFILE, "main open");
+}
+
+if (trimmed.includes("cout") || trimmed.includes("coot")) {
+  return findRuleByName(CPP_PROFILE, "cout output");
+}
+  if (trimmed.startsWith("int ")) return findRuleByName(CPP_PROFILE, "int variable");
+  if (trimmed.startsWith("string ")) return findRuleByName(CPP_PROFILE, "string variable");
+  if (trimmed.includes("return")) return findRuleByName(CPP_PROFILE, "return zero");
+  if (trimmed.includes("}")) return findRuleByName(CPP_PROFILE, "close brace");
+  if (trimmed.startsWith("if")) return findRuleByName(CPP_PROFILE, "if statement");
+  if (trimmed.startsWith("else if")) return findRuleByName(CPP_PROFILE, "else if statement");
+  if (trimmed.startsWith("else")) return findRuleByName(CPP_PROFILE, "else statement");
+  if (trimmed.startsWith("for")) return findRuleByName(CPP_PROFILE, "for loop");
+  if (trimmed.startsWith("while")) return findRuleByName(CPP_PROFILE, "while loop");
 
   return null;
 }
@@ -153,14 +86,6 @@ function looksIncompleteButNotWrong(line) {
   );
 }
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
-
 export function analyzeCppSource(source, options = {}) {
   const requireCompleteProgram = options.requireCompleteProgram === true;
   const errors = [];
@@ -186,7 +111,7 @@ export function analyzeCppSource(source, options = {}) {
       return;
     }
 
-    if (!matchesAnySupportedLine(line)) {
+    if (!matchesAnySupportedLine(line, CPP_PROFILE)) {
       const closest = findClosestRule(line);
 
       errors.push(
@@ -224,44 +149,8 @@ export function createCppDiagnosticsController(dom) {
   let timer = null;
   let currentErrors = [];
 
-  function removeDiagnosticsBox() {
-    document.querySelector(".diagnostics-box")?.remove();
-  }
-
-  function render(errors) {
-    currentErrors = Array.isArray(errors) ? errors : [];
-
-    removeDiagnosticsBox();
-
-    if (dom.codeInput) {
-      dom.codeInput.classList.toggle("code-input--has-error", currentErrors.length > 0);
-    }
-
-    if (!currentErrors.length) return;
-
-    const box = document.createElement("div");
-    box.className = "diagnostics-box";
-    box.innerHTML = `
-    <h3>Fix these errors first</h3>
-    ${currentErrors.map((error) => `
-        <div class="diagnostics-error-item">
-        <p>
-            <strong>Error:</strong>
-            ${error.description}
-            <span>Line ${error.line}</span>
-        </p>
-        ${error.text ? `<code>${escapeHtml(error.text)}</code>` : ""}
-        </div>
-    `).join("")}
-    `;
-
-    if (dom.explanationContent) {
-      dom.explanationContent.prepend(box);
-    }
-  }
-
   function checkLive(source) {
-    const errors = checkNow(source);
+    const errors = analyzeCppSource(source, { requireCompleteProgram: false });
 
     renderDiagnosticsSummary(dom, errors);
 
@@ -270,7 +159,8 @@ export function createCppDiagnosticsController(dom) {
 
   function checkForRun(source) {
     const errors = analyzeCppSource(source, { requireCompleteProgram: true });
-    render(errors);
+    currentErrors = errors;
+    renderDiagnosticsBox(dom, errors);
     return errors;
   }
 
@@ -279,31 +169,6 @@ export function createCppDiagnosticsController(dom) {
     timer = setTimeout(() => {
       checkLive(source);
     }, 500);
-  }
-
-  function renderDiagnosticsSummary(dom, errors) {
-    document.querySelector(".diagnostics-summary")?.remove();
-
-    if (!errors.length || !dom.explanationContent) {
-      return;
-    }
-
-    const summary = document.createElement("div");
-    summary.className = "diagnostics-summary";
-
-    summary.innerHTML = `
-      <h3>Problems found</h3>
-
-      <ul>
-        ${errors.map((error) => `
-          <li>
-            Line ${error.lineNumber}: ${error.message}
-          </li>
-        `).join("")}
-      </ul>
-    `;
-
-    dom.explanationContent.prepend(summary);
   }
 
   function clear() {

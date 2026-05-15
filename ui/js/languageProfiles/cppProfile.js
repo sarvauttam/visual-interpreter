@@ -9,6 +9,84 @@ import {
   explainLoops,
 } from "./sharedRuleUtils.js";
 
+export const CPP_PROFILE = [
+  {
+    name: "include library",
+    pattern: /^#include\s*<[a-zA-Z_][a-zA-Z0-9_]*>\s*$/,
+    message: "Use the include format: #include <library_name>",
+  },
+  {
+    name: "namespace std",
+    pattern: /^using\s+namespace\s+std\s*;\s*$/,
+    message: "Use exactly: using namespace std;",
+  },
+  {
+    name: "main open",
+    pattern: /^int\s+main\s*\(\s*\)\s*\{\s*$/,
+    message: "Use: int main() {",
+  },
+  {
+    name: "cout output",
+    pattern: /^cout\s*(<<\s*[^;]+)+\s*;\s*$/,
+    message: "Use cout with << operators and finish the line with a semicolon.",
+  },
+  {
+    name: "cout variable",
+    pattern: /^cout\s*<<\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(<<\s*endl)?\s*;\s*$/,
+    message: "Use cout with << and end with semicolon.",
+  },
+  {
+    name: "cin input",
+    pattern: /^cin\s*(>>\s*[a-zA-Z_][a-zA-Z0-9_]*)+\s*;$/,
+    message: "Use cin with >> followed by variable names.",
+  },
+  {
+    name: "int variable",
+    pattern: /^int\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(=\s*-?\d+)?\s*;$/,
+    message: "Use int like: int age = 10;",
+  },
+  {
+    name: "string variable",
+    pattern: /^string\s+[a-zA-Z_][a-zA-Z0-9_]*\s*(=\s*"([^"\\]|\\.)*")?\s*;$/,
+    message: 'Use string like: string name = "Alex";',
+  },
+  {
+    name: "if statement",
+    pattern: /^if\s*\(.+\)\s*\{\s*$/,
+    message: "Use if like: if (condition) {",
+  },
+  {
+    name: "else statement",
+    pattern: /^else\s*\{\s*$/,
+    message: "Use else like: else {",
+  },
+  {
+    name: "else if statement",
+    pattern: /^else\s+if\s*\(.+\)\s*\{\s*$/,
+    message: "Use else if like: else if (condition) {",
+  },
+  {
+    name: "for loop",
+    pattern: /^for\s*\(.+;.+;.+\)\s*\{\s*$/,
+    message: "Use for like: for (start; condition; update) {",
+  },
+  {
+    name: "while loop",
+    pattern: /^while\s*\(.+\)\s*\{\s*$/,
+    message: "Use while like: while (condition) {",
+  },
+  {
+    name: "return zero",
+    pattern: /^return\s+0\s*;\s*$/,
+    message: "Use exactly: return 0;",
+  },
+  {
+    name: "close brace",
+    pattern: /^\}\s*$/,
+    message: "Use } to close the main function.",
+  },
+];
+
 export const cppProfile = {
   language: "C++",
   signals: [
@@ -284,17 +362,18 @@ export const cppProfile = {
       return true;
     }
 
-      add(
-        lineNumber,
-        line,
-        buildFallback({
-          languageName: "C++",
-          confidence,
-          isMixed: !!options.isMixed,
-          isPartialSource: !!options.isPartialSource,
-          subject: "C++ program structure or logic",
-        })
-      );
+    add(
+      lineNumber,
+      line,
+      buildFallback({
+        languageName: "C++",
+        confidence,
+        isMixed: !!options.isMixed,
+        isPartialSource: !!options.isPartialSource,
+        subject: "C++ program structure or logic",
+      })
+    );
+
     return true;
   },
 };

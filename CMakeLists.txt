@@ -15,7 +15,6 @@ add_executable(vi
   src/wasm/runner.cpp
 )
 
-
 target_include_directories(vi PRIVATE src)
 
 if (MSVC)
