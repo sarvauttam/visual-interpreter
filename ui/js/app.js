@@ -62,6 +62,8 @@ import { handleLiveEditorInput } from "./ui/liveEditorInputHandler.js";
 
 import { handleRunClick } from "./ui/runClickHandler.js";
 
+import { createGuidesDropdownController } from "./ui/guidesDropdown.js";
+
 function bindEditorActions(
   dom,
   editor,
@@ -141,6 +143,11 @@ function initApp() {
   const modal = createModalController(dom);
   const tutorial = createTutorialController(dom);
   const guidedMode = createGuidedModeController(dom, editor);
+
+  const guidesDropdown = createGuidesDropdownController({
+    modal,
+    guidedMode,
+  });
   const diagnostics = createCppDiagnosticsController(dom);
   const draftStorage = createDraftStorageController(editor);
   const templates = createTemplatesController(
@@ -152,6 +159,7 @@ function initApp() {
   const libraryInfo = createLibraryInfoController(dom);
   const lineNumbers = createLineNumbersController(dom, editor);
   const editorIndentation = createEditorIndentationController(dom);
+
 
   let activeLanguage = getLanguageProfile(dom.languageSelect?.value || "cpp");
 
@@ -169,6 +177,7 @@ function initApp() {
   runner.init();
   history.init();
   modal.bindModalEvents();
+  guidesDropdown.init();
   tutorial.init();
   draftStorage.restore();
   lineNumbers.init();

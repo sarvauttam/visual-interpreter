@@ -26,10 +26,30 @@
         <button class="topbar-btn" id="templatesBtn" type="button">
           Templates
         </button>
-        <button class="topbar-btn" id="guidedCppBtn" type="button">Guided C++</button>
+
+        <div class="guides-menu">
+          <button
+            class="topbar-btn"
+            id="guidesBtn"
+            type="button"
+            aria-expanded="false"
+            aria-haspopup="true"
+          >
+            Guides
+          </button>
+
+          <div id="guidesDropdown" class="guides-dropdown hidden">
+            <button type="button" data-guide-language="cpp">C++</button>
+            <button type="button" data-guide-language="python">Python</button>
+            <button type="button" data-guide-language="csharp">C#</button>
+            <button type="button" data-guide-language="javascript">JavaScript</button>
+          </div>
+        </div>
+
         <button class="topbar-btn" id="howToUseBtn" type="button">How to Use</button>
         <button class="topbar-btn" id="uploadBtn" type="button">Upload File</button>
         <button class="topbar-btn" id="historyBtn" type="button">History</button>
+
         <button class="topbar-btn topbar-btn--account" id="accountBtn" type="button">
           Local Saves
         </button>
