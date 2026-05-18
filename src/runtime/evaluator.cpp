@@ -297,8 +297,14 @@ bool Evaluator::exec_print(const PrintStmt* s) {
     text += v.to_string();
     first = false;
   }
+  fprintf(stderr, "[DEBUG PRINT] text='%s'\n", text.c_str());
+
   if (out_) {
+      fprintf(stderr, "[DEBUG PRINT] output stream exists\n");
       (*out_) << text << "\n";
+      out_->flush();
+  } else {
+      fprintf(stderr, "[DEBUG PRINT] output stream is null\n");
   }
   if (trace_ && trace_->enabled()) {
     trace_->emit_print(text, current_loc_, current_frame_);
@@ -307,9 +313,29 @@ bool Evaluator::exec_print(const PrintStmt* s) {
 }
 
 bool Evaluator::eval_expr(const Expr* e, Value& out) {
-  if (auto p = dynamic_cast<const IntExpr*>(e)) { out = Value::make_int(p->value); return true; }
-  if (auto p = dynamic_cast<const BoolExpr*>(e)) { out = Value::make_bool(p->value); return true; }
-  if (auto p = dynamic_cast<const CallExpr*>(e)) { return call_function(p, out); }
+  if (auto p = dynamic_cast<const IntExpr*>(e)) {
+    out = Value::make_int(p->value);
+    return true;
+  }
+
+  if (auto p = dynamic_cast<const BoolExpr*>(e)) {
+    out = Value::make_bool(p->value);
+    return true;
+  }
+
+  if (auto p = dynamic_cast<const StringExpr*>(e)) {
+    out = Value::make_string(p->value);
+    return true;
+  }
+
+  if (auto p = dynamic_cast<const StringExpr*>(e)) {
+    out = Value::make_string(p->value);
+    return true;
+  }
+
+  if (auto p = dynamic_cast<const CallExpr*>(e)) {
+    return call_function(p, out);
+  }
   if (auto p = dynamic_cast<const VarExpr*>(e)) {
     Value v;
     if (!get_var(p->name, v)) return false;

@@ -136,6 +136,46 @@ export function detectSourceProfile(source) {
 
   const isPartialSource = detectPartialSource(text);
 
+  const trimmedLines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+    const isTeachingSyntax =
+      trimmedLines.length > 0 &&
+      trimmedLines.every((line) => {
+        return (
+          /^print\s*\(\s*\S.*\)\s*;\s*$/.test(line) ||
+          /^let\s+[A-Za-z_]\w*\s*=.+;\s*$/.test(line) ||
+          /^input\s*\(\s*[A-Za-z_]\w*\s*\)\s*;\s*$/.test(line) ||
+          /^if\s*\(.+\)\s*\{\s*$/.test(line) ||
+          /^while\s*\(.+\)\s*\{\s*$/.test(line) ||
+          /[<>!=]=?/.test(line) ||
+          /^else\s*\{\s*$/.test(line) ||
+          /^else\s+if\s*\(.+\)\s*\{\s*$/.test(line) ||
+          /^\w+\s*=\s*.+;\s*$/.test(line) ||
+          /^else\s*\{\s*$/.test(line) ||
+          /^else\s+if\s*\(.+\)\s*\{\s*$/.test(line) ||
+          /^\w+\s*=\s*.+;\s*$/.test(line) ||
+          /^return\b.*;?\s*$/.test(line) ||
+          /^\}\s*$/.test(line)
+        );
+      });
+
+  if (isTeachingSyntax) {
+    return {
+      mode: "run",
+      language: "Teaching Syntax",
+      reason:
+        "This source matches the supported beginner teaching syntax and can run in the browser interpreter.",
+      confidence: "high",
+      matchedSignals: 0,
+      competingLanguages: [],
+      isMixed: false,
+      isPartialSource,
+    };
+  }
+
   // Priority 1: runnable teaching language
   if (isTeachingLanguageRunnable(text)) {
     return {
@@ -269,6 +309,8 @@ function buildExplainOnlyExplanation(profile, source, sourceProfile) {
 
   lines.forEach((line, index) => {
     const lineNumber = index + 1;
+
+    
 
     if (!line.trim()) return;
 

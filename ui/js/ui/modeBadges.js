@@ -15,7 +15,7 @@ function getSourceBadgeText(profile) {
   if (!profile || profile.mode === "empty") return "Waiting for code";
 
   if (profile.mode === "run") {
-    return "Run mode: simplified teaching language";
+    return "Run mode: beginner teaching syntax";
   }
 
   const confidenceText =
@@ -31,7 +31,9 @@ function getSourceBadgeText(profile) {
 function getPanelBadgeText(profile) {
   if (!profile || profile.mode === "empty") return "Waiting";
 
-  if (profile.mode === "run") return "Run mode";
+  if (profile.mode === "run") {
+    return "Run mode · beginner teaching syntax";
+  }
 
   const confidenceText =
     profile.confidence === "high"

@@ -112,6 +112,43 @@ export const cppProfile = {
 
     if (!trimmed) return false;
 
+    if (/^print\s*\((.*)\)\s*;?$/.test(trimmed)) {
+      add(
+        lineNumber,
+        line,
+        "This sends a value to the output panel so the user can see the program result."
+      );
+      return true;
+    }
+
+    if (/^let\s+[A-Za-z_]\w*\s*=.+;\s*$/.test(trimmed)) {
+      add(
+        lineNumber,
+        line,
+        "This creates a variable and stores a value inside it."
+      );
+      return true;
+    }
+
+    if (/^input\s*\(\s*[A-Za-z_]\w*\s*\)\s*;\s*$/.test(trimmed)) {
+      add(
+        lineNumber,
+        line,
+        "This asks the user for input and stores the result in a variable."
+      );
+      return true;
+    }
+
+    if (/^\w+\s*=\s*.+;\s*$/.test(trimmed)) {
+      add(
+        lineNumber,
+        line,
+        "This updates a variable by calculating a new value and storing it."
+      );
+      return true;
+    }
+
+
     if (
       explainComment(ctx, {
         style: "slash",
@@ -336,6 +373,43 @@ export const cppProfile = {
         breakText: "This line stops the current loop or switch immediately.",
         continueText:
           "This line skips the rest of the current loop iteration and moves to the next one.",
+      })
+    ) {
+      return true;
+    }
+
+    if (/^if\s*\(.+\)\s*\{\s*$/.test(trimmed)) {
+      add(
+        lineNumber,
+        line,
+        "This checks a condition. The code inside the block only runs if the condition is true."
+      );
+      return true;
+    }
+
+    if (/^if\s*\(.+\)\s*\{\s*$/.test(trimmed)) {
+      add(
+        lineNumber,
+        line,
+        "This checks a condition. The code inside the block only runs if the condition is true."
+      );
+      return true;
+    }
+
+    if (/^while\s*\(.+\)\s*\{\s*$/.test(trimmed)) {
+      add(
+        lineNumber,
+        line,
+        "This loop repeats while the condition remains true."
+      );
+      return true;
+    }
+
+    if (
+      explainFunctionCall(ctx, {
+        pattern: /^\w+\s*\([^)]*\)\s*;$/,
+        explanation:
+          "This line calls a function, which means it asks another block of code to run.",
       })
     ) {
       return true;

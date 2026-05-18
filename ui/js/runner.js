@@ -22,26 +22,31 @@ function renderOutputMessage(container, message, variant = "muted") {
 function renderProgramOutput(container, stdoutText) {
   if (!container) return;
 
-  const normalized = stdoutText ?? "";
+  const normalized = String(stdoutText ?? "");
   const trimmed = normalized.trim();
 
   if (!trimmed) {
     container.innerHTML = `
-      <div class="output-empty-success">
+      <div class="output-empty-success compact-output-message">
         <h3>Your program ran successfully</h3>
+
         <p>
-          It finished without printing anything to the output area.
+          The program finished, but nothing was printed to the output.
         </p>
+
         <p class="muted">
-          That usually means your code executed, but it did not use a print statement such as
-          <code>cout</code> to show a result.
+          Use <code>print(...);</code> statements if you want visible output.
         </p>
       </div>
     `;
     return;
   }
 
-  container.textContent = normalized;
+  container.innerHTML = `
+    <div class="program-output">
+      <pre>${normalized}</pre>
+    </div>
+  `;
 }
 
 function renderExplainOnlyOutput(container, languageLabel, reason, confidence = "high") {
@@ -429,8 +434,6 @@ async function runSource(source) {
   try {
       const normalizedSource = source.replace(/\r\n/g, "\n").trim();
 
-      console.log("FINAL SOURCE:", JSON.stringify(normalizedSource));
-
       const wasmModule = await ensureWasmLoaded();
 
       const runFunctions = getPossibleRunFunctions(wasmModule);
@@ -458,11 +461,20 @@ async function runSource(source) {
       }
 
       const normalized = normalizeRawResult(rawResult);
+
+      console.log("RUNNER NORMALIZED RESULT:", normalized);
+
       const traceEvents = parseTraceJsonl(normalized.trace_jsonl || "");
       const traceInsights = buildTraceInsights(traceEvents);
 
+      const stdoutText =
+        normalized.stdout_text ??
+        normalized.stdout ??
+        normalized.output ??
+        "";
+
       if (normalized.ok) {
-        renderProgramOutput(dom.outputContent, normalized.stdout_text || "");
+        renderProgramOutput(dom.outputContent, stdoutText);
       } else {
         renderOutputMessage(
           dom.outputContent,
@@ -476,7 +488,11 @@ async function runSource(source) {
       return {
         ok: Boolean(normalized.ok),
         reason: normalized.ok ? "run-success" : "run-error",
-        stdoutText: normalized.stdout_text || "",
+        stdoutText:
+          normalized.stdout_text ??
+          normalized.stdout ??
+          normalized.output ??
+          "",
         errorText: normalized.error_text || "",
         traceJsonl: normalized.trace_jsonl || "",
         traceEvents,
