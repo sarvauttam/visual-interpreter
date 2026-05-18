@@ -152,38 +152,29 @@ for (const auto& st : program.statements) {
 }
 bool Evaluator::exec_stmt(const Stmt* s) {
     current_loc_ = s ? s->loc : Loc{1,1};
-    fprintf(stderr, "[DEBUG] exec_stmt: statement type = ");
     
     if (auto p = dynamic_cast<const ReturnStmt*>(s)) {
-        fprintf(stderr, "ReturnStmt\n");
         return exec_return(p);
     }
     if (auto p = dynamic_cast<const LetStmt*>(s)) {
-        fprintf(stderr, "LetStmt\n");
         return exec_let(p);
     }
     if (auto p = dynamic_cast<const AssignStmt*>(s)) {
-        fprintf(stderr, "AssignStmt\n");
         return exec_assign(p);
     }
     if (auto p = dynamic_cast<const ExprStmt*>(s)) {
-        fprintf(stderr, "ExprStmt\n");
         return exec_exprstmt(p);
     }
     if (auto p = dynamic_cast<const PrintStmt*>(s)) {
-        fprintf(stderr, "PrintStmt\n");
         return exec_print(p);
     }
     if (auto p = dynamic_cast<const IfStmt*>(s)) {
-        fprintf(stderr, "IfStmt\n");
         return exec_if(p);
     }
     if (auto p = dynamic_cast<const WhileStmt*>(s)) {
-        fprintf(stderr, "WhileStmt\n");
         return exec_while(p);
     }
 
-    fprintf(stderr, "UNKNOWN\n");
     set_error(RuntimeErrorCode::UndefinedVariable, "Runtime: statement kind not implemented yet");
     return false;
 }
@@ -297,19 +288,16 @@ bool Evaluator::exec_print(const PrintStmt* s) {
     text += v.to_string();
     first = false;
   }
-  fprintf(stderr, "[DEBUG PRINT] text='%s'\n", text.c_str());
 
-  if (out_) {
-      fprintf(stderr, "[DEBUG PRINT] output stream exists\n");
-      (*out_) << text << "\n";
-      out_->flush();
-  } else {
-      fprintf(stderr, "[DEBUG PRINT] output stream is null\n");
-  }
-  if (trace_ && trace_->enabled()) {
+if (out_) {
+    (*out_) << text << "\n";
+    out_->flush();
+}
+
+if (trace_ && trace_->enabled()) {
     trace_->emit_print(text, current_loc_, current_frame_);
-  }
-  return true;
+}
+return true;
 }
 
 bool Evaluator::eval_expr(const Expr* e, Value& out) {

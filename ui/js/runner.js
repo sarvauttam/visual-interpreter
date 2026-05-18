@@ -462,8 +462,6 @@ async function runSource(source) {
 
       const normalized = normalizeRawResult(rawResult);
 
-      console.log("RUNNER NORMALIZED RESULT:", normalized);
-
       const traceEvents = parseTraceJsonl(normalized.trace_jsonl || "");
       const traceInsights = buildTraceInsights(traceEvents);
 
